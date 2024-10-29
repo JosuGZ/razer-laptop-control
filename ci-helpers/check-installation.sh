@@ -9,6 +9,8 @@ check_file() {
     fi
 }
 
+# https://stackoverflow.com/questions/71020739/dynamic-github-actions-steps#72295162
+echo ::group::Checking Files
 echo "Checking the existence of the necessary files..."
 # Daemon
 check_file "$HOME/.local/share/razercontrol"
@@ -21,6 +23,7 @@ check_file "/usr/bin/razer-cli"
 check_file "/usr/bin/razer-settings"
 check_file "/usr/share/applications/razer-settings.desktop"
 echo "All files are present"
+echo ::endgroup::
 
 printf "Checking that the service is enabled: "
 systemctl --user is-enabled razercontrol.service
