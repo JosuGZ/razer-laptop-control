@@ -50,3 +50,15 @@ jobs:
     - name: "Check installation"
       working-directory: ./razer_control_gui
       run: ../ci-helpers/check-installation.sh
+
+  build-nix:
+    name: "Build and check Nix"
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - run: nix build
+      - run: nix flake check
