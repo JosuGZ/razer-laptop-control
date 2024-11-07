@@ -62,5 +62,6 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
       - run: nix build
       - run: nix flake check
+      - run: nix flake install
       - name: "Check installation"
         run: ./ci-helpers/check-installation-nix.sh
