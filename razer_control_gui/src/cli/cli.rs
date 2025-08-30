@@ -120,9 +120,12 @@ fn main() {
             }
         },
         Args::DeviceInfo => {
-            println!("Found the following devices:");
             match razer_devices() {
+                Ok(devices) if devices.is_empty() => {
+                    println!("No razer devices found");
+                }
                 Ok(devices) => {
+                    println!("Found the following razer devices:");
                     for device in devices{
                         println!(
                             "- {}:{} {}",
