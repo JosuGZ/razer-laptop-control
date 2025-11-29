@@ -97,6 +97,7 @@
 
             systemd.user.services."razerdaemon" = {
               description = "Razer laptop control daemon";
+              unitConfig.ConditionUser = "!@system";
               serviceConfig = {
                 Type = "simple";
                 ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p %h/.local/share/razercontrol";
