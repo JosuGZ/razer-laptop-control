@@ -156,8 +156,12 @@ impl RazerHidapi {
             self.busy_events as f32 / self.reports_sent as f32 * 100f32
         };
 
-        warn!("Reports sent: {}", self.reports_sent);
-        warn!("Busy events: {} ({busy_events_percent}%)", self.busy_events);
-        warn!("Errors: {}", self.errors);
+        info!(
+            "Stats: {{sent: {}, busy: {}, errors: {}, busy_percent: {:.2}%}}",
+            self.reports_sent,
+            self.busy_events,
+            self.errors,
+            busy_events_percent,
+        );
     }
 }
