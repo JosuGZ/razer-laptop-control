@@ -26,10 +26,8 @@ jobs:
     - name: "Cache cargo"
       uses: Swatinem/rust-cache@v2
     - name: Build
-      working-directory: ./razer_control_gui
       run: cargo build --verbose
     - name: Run tests
-      working-directory: ./razer_control_gui
       run: cargo test --verbose
 
   install:
@@ -44,11 +42,9 @@ jobs:
         packages:  libdbus-1-dev libusb-dev libhidapi-dev libhidapi-hidraw0 pkg-config libudev-dev libgtk-3-dev 
         version: 1.0
     - name: "Install"
-      working-directory: ./razer_control_gui
       # According to this, sudo sould run ok: https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#administrative-privileges
       run: ./install.sh install
     - name: "Check installation"
-      working-directory: ./razer_control_gui
       run: ../ci-helpers/check-installation.sh
 
   build-nix:
