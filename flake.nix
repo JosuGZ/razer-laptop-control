@@ -35,7 +35,7 @@
             gtk3
           ];
 
-          src = ./razer_control_gui;
+          src = .;
 
           postBuild =
             let
