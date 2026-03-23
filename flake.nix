@@ -35,6 +35,8 @@
             gtk3
           ];
 
+          src = ./.;
+
           postBuild =
             let
               app = "razer-settings";
