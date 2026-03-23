@@ -71,7 +71,7 @@ pub fn try_bind() -> std::io::Result<UnixStream> {
 
 #[allow(dead_code)]
 pub fn create() -> Option<UnixListener> {
-    if let Ok(_) = std::fs::metadata(SOCKET_PATH) {
+    if std::fs::metadata(SOCKET_PATH).is_ok() {
         eprintln!("UNIX Socket already exists. Is another daemon running?");
         return None;
     }

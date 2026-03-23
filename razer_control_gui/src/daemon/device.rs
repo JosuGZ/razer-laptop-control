@@ -110,7 +110,7 @@ impl DeviceManager {
     }
 
     fn remove_watch(&mut self, proxy_idle: &dyn dbus_mutter_idlemonitor::OrgGnomeMutterIdleMonitor) {
-        if let Ok(_) = proxy_idle.remove_watch(self.idle_id) {
+        if proxy_idle.remove_watch(self.idle_id).is_ok() {
             println!("remove idle handler");
         }
     }
@@ -633,7 +633,7 @@ impl RazerLaptop {
                 report.args[idx+1] = params[idx];
             }
         }
-        if let Some(_) = self.device.send_report(report) {
+        if self.device.send_report(report).is_some() {
             return true;
         }
 
@@ -659,7 +659,7 @@ impl RazerLaptop {
         let mut report: RazerPacket = RazerPacket::new(0x03, 0x0a, 0x02);
         report.args[0] = RazerLaptop::CUSTOMFRAME; // effect id
         report.args[1] = RazerLaptop::NOSTORE;
-        if let Some(_) = self.device.send_report(report) {
+        if self.device.send_report(report).is_some() {
             return true;
         }
 
@@ -687,7 +687,7 @@ impl RazerLaptop {
             0 => report.args[3] = 0x00,
             _ => report.args[3] = 0x01
         }
-        if let Some(_) = self.device.send_report(report) {
+        if self.device.send_report(report).is_some() {
             return  true;
         }
 
@@ -713,7 +713,7 @@ impl RazerLaptop {
         report.args[0] = 0x00;
         report.args[1] = 0x01;
         report.args[2] = boost;
-        if let Some(_)= self.device.send_report(report) {
+        if self.device.send_report(report).is_some() {
             return true;
         }
 
@@ -736,7 +736,7 @@ impl RazerLaptop {
         report.args[0] = 0x00;
         report.args[1] = 0x02;
         report.args[2] = boost;
-        if let Some(_) = self.device.send_report(report) {
+        if self.device.send_report(report).is_some() {
             return true;
         }
         false
@@ -769,7 +769,7 @@ impl RazerLaptop {
         report.args[0] = 0x00;
         report.args[1] = zone;
         report.args[2] = self.fan_rpm;
-        if let Some(_) = self.device.send_report(report) {
+        if self.device.send_report(report).is_some() {
             return true;
         }
 
@@ -819,7 +819,7 @@ impl RazerLaptop {
         report.args[0] = RazerLaptop::VARSTORE;
         report.args[1] = RazerLaptop::LOGO_LED;
         report.args[2] = self.clamp_u8(mode, 0x00, 0x01);
-        if let Some(_) = self.device.send_report(report) {
+        if self.device.send_report(report).is_some() {
             return true;
         }
 
@@ -842,7 +842,7 @@ impl RazerLaptop {
         report.args[0] = RazerLaptop::VARSTORE;
         report.args[1] = RazerLaptop::BACKLIGHT_LED;
         report.args[2] = brightness;
-        if let Some(_) = self.device.send_report(report) {
+        if self.device.send_report(report).is_some() {
             return true;
         }
 
