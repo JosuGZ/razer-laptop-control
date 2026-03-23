@@ -1,5 +1,4 @@
 [workspace]
-resolver = "2"
 members = [
   "razer_control_gui",
 ]
