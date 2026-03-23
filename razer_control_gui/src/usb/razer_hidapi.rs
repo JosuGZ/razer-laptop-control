@@ -32,7 +32,7 @@ impl RazerPacket {
     const RAZER_CMD_NOT_SUPPORTED:u8 = 0x05;
 
     pub fn new(command_class: u8, command_id: u8, data_size: u8) -> RazerPacket {
-        return RazerPacket {
+        RazerPacket {
             report: 0x00,
             status: RazerPacket::RAZER_CMD_NEW,
             id: 0x1F,
@@ -44,7 +44,7 @@ impl RazerPacket {
             args: [0x00; 80],
             crc: 0x00,
             reserved: 0x00,
-        };
+        }
     }
 
     fn calc_crc(&mut self) -> Vec<u8>{
@@ -55,7 +55,7 @@ impl RazerPacket {
         }
 
         self.crc = res;
-        return buf;
+        buf
     }
 }
 

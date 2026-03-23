@@ -260,7 +260,7 @@ fn valid_bho_threshold(threshold: u8) -> bool {
         return false;
     }
 
-    return true;
+    true
 }
 
 fn bho_toggle_off() {

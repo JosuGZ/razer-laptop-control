@@ -19,7 +19,7 @@ pub struct PowerConfig {
 
 impl PowerConfig {
     pub fn new() -> PowerConfig {
-        return PowerConfig{
+        PowerConfig {
             power_mode: 0,
             cpu_boost: 1,
             gpu_boost: 0,
@@ -50,14 +50,14 @@ pub struct Configuration {
 
 impl Configuration {
     pub fn new() -> Configuration {
-        return Configuration {
+        Configuration {
             enable_light_control: true,
             power: [PowerConfig::new(), PowerConfig::new()],
             sync: false,
             no_light: 0.0,
             standard_effect: 0, // off
             standard_effect_params: vec![]
-        };
+        }
     }
 
     pub fn write_to_file(&mut self) -> io::Result<()> {

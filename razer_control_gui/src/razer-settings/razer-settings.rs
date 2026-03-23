@@ -538,7 +538,7 @@ fn make_page(ac: bool, device: SupportedDevice) -> SettingsPage {
             set_brightness(ac, value as u8).or_crash("Error setting brigthness");
             let brightness = get_brightness(ac).or_crash("Error reading brightness");
             scale.set_value(brightness as f64);
-            return gtk::glib::Propagation::Stop;
+            gtk::glib::Propagation::Stop
         });
     let row = SettingsRow::new(&label, &scale);
     settings_section.add_row(&row.master_container);

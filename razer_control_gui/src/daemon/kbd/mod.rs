@@ -59,14 +59,14 @@ unsafe impl Sync for EffectLayer {}
 
 impl EffectLayer {
     fn new(effect: Box<dyn Effect>, mask: [bool; 90]) -> EffectLayer {
-        return EffectLayer {
+        EffectLayer {
             key_mask: mask.to_vec(),
             effect,
-        };
+        }
     }
 
     fn update(&mut self) -> board::KeyboardData {
-        return self.effect.update();
+        self.effect.update()
     }
 
     fn get_save(&mut self) -> Option<serde_json::Value> {
@@ -109,10 +109,10 @@ impl EffectLayer {
             eprintln!("Effect failed to load. Invalid name: {}", name);
             return None;
         }
-        return Some(EffectLayer {
+        Some(EffectLayer {
             key_mask,
             effect: effect.unwrap(),
-        });
+        })
     }
 
     pub fn get_state(&mut self) -> Vec<u8> {
@@ -184,7 +184,7 @@ impl EffectManager {
                 eprintln!("Warning, discarding effect!");
             }
         }
-        return save_json;
+        save_json
     }
 
     pub fn load_from_save(&mut self, mut json: serde_json::Value) {
@@ -204,9 +204,9 @@ impl EffectManager {
     pub fn get_map(&mut self, layer_id: i32) -> Vec<u8> {
         if layer_id < 0 {
             // Requesting global layer
-            return self.render_board.get_curr_state();
+            self.render_board.get_curr_state()
         } else {
-            return self.layers[layer_id as usize].get_state();
+            self.layers[layer_id as usize].get_state()
         }
     }
 }

@@ -22,18 +22,18 @@ impl Effect for Static {
             kbd,
             args: [args[0], args[1], args[2]],
         };
-        return Box::new(s);
+        Box::new(s)
     }
 
     fn update(&mut self) -> board::KeyboardData {
-        return self.kbd;
+        self.kbd
     }
 
     fn get_name() -> &'static str
     where
         Self: Sized,
     {
-        return "Static";
+        "Static"
     }
 
     fn get_varargs(&mut self) -> &[u8] {
@@ -41,7 +41,7 @@ impl Effect for Static {
     }
 
     fn clone_box(&self) -> Box<dyn Effect> {
-        return Box::new(*self);
+        Box::new(*self)
     }
 
     fn save(&mut self) -> EffectSave {
@@ -100,11 +100,11 @@ impl Effect for StaticGradient {
     }
 
     fn get_varargs(&mut self) -> &[u8] {
-        return &self.args;
+        &self.args
     }
 
     fn clone_box(&self) -> Box<dyn Effect> {
-        return Box::new(*self);
+        Box::new(*self)
     }
 
     fn save(&mut self) -> EffectSave {
@@ -173,11 +173,11 @@ impl Effect for WaveGradient {
     }
 
     fn get_varargs(&mut self) -> &[u8] {
-        return &self.args;
+        &self.args
     }
 
     fn clone_box(&self) -> Box<dyn Effect> {
-        return Box::new(self.clone());
+        Box::new(self.clone())
     }
 
     fn save(&mut self) -> EffectSave {
@@ -274,7 +274,7 @@ impl Effect for BreathSingle {
         }
         let col = self.current_colour.get_clamped_colour();
         self.kbd.set_kbd_colour(col.red, col.green, col.blue); // Cast back to u8
-        return self.kbd;
+        self.kbd
     }
 
     fn get_name() -> &'static str
@@ -285,11 +285,11 @@ impl Effect for BreathSingle {
     }
 
     fn get_varargs(&mut self) -> &[u8] {
-        return &self.args;
+        &self.args
     }
 
     fn clone_box(&self) -> Box<dyn Effect> {
-        return Box::new(*self);
+        Box::new(*self)
     }
 
     fn save(&mut self) -> EffectSave {

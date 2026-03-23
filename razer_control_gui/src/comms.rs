@@ -61,9 +61,9 @@ pub enum DaemonResponse {
 #[allow(dead_code)]
 pub fn bind() -> Option<UnixStream> {
     if let Ok(socket) = UnixStream::connect(SOCKET_PATH) {
-        return Some(socket);
+        Some(socket)
     } else {
-        return None;
+        None
     }
 }
 
@@ -88,7 +88,7 @@ pub fn create() -> Option<UnixListener> {
         }
         return Some(listener);
     }
-    return None;
+    None
 }
 
 #[allow(dead_code)]
@@ -111,7 +111,7 @@ pub fn send_to_daemon(command: DaemonCommand, mut sock: UnixStream) -> Option<Da
             eprintln!("Socket write failed!");
         }
     }
-    return None;
+    None
 }
 
 /// Deserializes incomming bytes in order to return
@@ -120,11 +120,11 @@ fn read_from_socked_resp(bytes: &[u8]) -> Option<DaemonResponse> {
     match bincode::deserialize::<DaemonResponse>(bytes) {
         Ok(res) => {
             println!("RES: {:?}", res);
-            return Some(res);
+            Some(res)
         }
         Err(e) => {
             println!("RES ERROR: {}", e);
-            return None;
+            None
         }
     }
 }
@@ -136,11 +136,11 @@ pub fn read_from_socket_req(bytes: &[u8]) -> Option<DaemonCommand> {
     match bincode::deserialize::<DaemonCommand>(bytes) {
         Ok(res) => {
             println!("REQ: {:?}", res);
-            return Some(res);
+            Some(res)
         }
         Err(e) => {
             println!("REQ ERROR: {}", e);
-            return None;
+            None
         }
     }
 }

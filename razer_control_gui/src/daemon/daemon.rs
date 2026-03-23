@@ -304,7 +304,7 @@ fn handle_data(mut stream: UnixStream) {
 
 pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::DaemonResponse> {
     let mut d = dev_manager();
-    return match cmd {
+    match cmd {
         comms::DaemonCommand::SetPowerMode { ac, pwr, cpu, gpu } => {
             Some(comms::DaemonResponse::SetPowerMode { result: d.set_power_mode(ac, pwr, cpu, gpu) })
         },
@@ -394,22 +394,22 @@ pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::Daemon
             Some(comms::DaemonResponse::SetStandardEffect{result: res})
         }
         comms::DaemonCommand::SetBatteryHealthOptimizer { is_on, threshold } => { 
-            return Some(comms::DaemonResponse::SetBatteryHealthOptimizer { result: d.set_bho_handler(is_on, threshold)});
+            Some(comms::DaemonResponse::SetBatteryHealthOptimizer { result: d.set_bho_handler(is_on, threshold)})
         }
         comms::DaemonCommand::GetBatteryHealthOptimizer() => {
-            return d.get_bho_handler().map(|result| 
+            d.get_bho_handler().map(|result| 
                 comms::DaemonResponse::GetBatteryHealthOptimizer {
                     is_on: (result.0), 
                     threshold: (result.1) 
                 }
-            );
+            )
         }
         comms::DaemonCommand::GetDeviceName => {
             let name = match &d.device {
                 Some(device) => device.get_name(),
                 None => "Unknown Device".into()
             };
-            return Some(comms::DaemonResponse::GetDeviceName { name });
+            Some(comms::DaemonResponse::GetDeviceName { name })
         }
 
         comms::DaemonCommand::SetEnableLightControl { enable } => {
@@ -419,7 +419,7 @@ pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::Daemon
             Some(comms::DaemonResponse::GetEnableLightControl { enabled: d.get_light_control()})
         }
 
-    };
+    }
 }
 
 

@@ -23,7 +23,7 @@ pub struct DeviceManager {
 
 impl DeviceManager {
     pub fn new () -> DeviceManager {
-        return DeviceManager {
+        DeviceManager {
             device: None,
             supported_devices: vec![],
             config: None,
@@ -31,7 +31,7 @@ impl DeviceManager {
             active_id: 0,
             add_active: false,
             change_idle: false,
-        };
+        }
     }
 
     pub fn add_idle_watch(&mut self, proxy_idle: &dyn dbus_mutter_idlemonitor::OrgGnomeMutterIdleMonitor) {
@@ -77,7 +77,7 @@ impl DeviceManager {
             }
         }
 
-        return true;
+        true
     }
 
     pub fn get_sync(&mut self) -> bool {
@@ -85,7 +85,7 @@ impl DeviceManager {
             return config.sync;
         }
 
-        return false;
+        false
     }
 
     pub fn set_light_control(&mut self, enabled: bool) -> bool {
@@ -98,7 +98,7 @@ impl DeviceManager {
             }
         }
 
-        return true;
+        true
     }
 
     pub fn get_light_control(&mut self) -> bool {
@@ -106,7 +106,7 @@ impl DeviceManager {
             return config.enable_light_control;
         }
 
-        return false;
+        false
     }
 
     fn remove_watch(&mut self, proxy_idle: &dyn dbus_mutter_idlemonitor::OrgGnomeMutterIdleMonitor) {
@@ -142,7 +142,7 @@ impl DeviceManager {
             return Some(c.power[ac]);
         }
 
-        return None;
+        None
     }
 
     pub fn light_off(&mut self) {
@@ -206,7 +206,7 @@ impl DeviceManager {
             }
         }
 
-        return true;
+        true
     }
 
     pub fn set_power_mode(&mut self, ac: usize, pwr: u8, cpu: u8, gpu: u8) -> bool {
@@ -228,7 +228,7 @@ impl DeviceManager {
             }
         }
 
-        return res;
+        res
     }
 
     pub fn set_standard_effect(&mut self, effect_id: u8, params: Vec<u8>) -> bool {
@@ -243,7 +243,7 @@ impl DeviceManager {
             laptop.set_standard_effect(effect_id, params);
         }
 
-        return true;
+        true
     }
 
     pub fn set_fan_rpm(&mut self, ac:usize, rpm: i32) -> bool {
@@ -264,7 +264,7 @@ impl DeviceManager {
             }
         }
 
-        return res;
+        res
     }
 
     pub fn set_logo_led_state(&mut self, ac:usize, logo_state: u8) -> bool {
@@ -290,7 +290,7 @@ impl DeviceManager {
             }
         }
 
-        return res;
+        res
     }
 
     pub fn get_logo_led_state(&mut self, ac: usize) -> u8 {
@@ -304,7 +304,7 @@ impl DeviceManager {
             return config.logo_state;
         }
 
-        return 0;
+        0
     }
 
     pub fn set_brightness(&mut self, ac:usize, brightness: u8) -> bool {
@@ -330,7 +330,7 @@ impl DeviceManager {
             }
         }
 
-        return res;
+        res
     }
 
     pub fn get_brightness(&mut self, ac: usize) -> u8 {
@@ -352,7 +352,7 @@ impl DeviceManager {
             return perc as u8;
         }
 
-        return 0
+        0
     }
 
     pub fn get_fan_rpm(&mut self, ac: usize) -> i32 {
@@ -366,7 +366,7 @@ impl DeviceManager {
             return config.fan_rpm;
         }
 
-        return 0;
+        0
     }
 
     pub fn get_power_mode(&mut self, ac:usize) -> u8 {
@@ -380,7 +380,7 @@ impl DeviceManager {
             return config.power_mode;
         }
 
-        return 0;
+        0
     }
 
     pub fn get_cpu_boost(&mut self, ac:usize) -> u8 {
@@ -394,7 +394,7 @@ impl DeviceManager {
             return config.cpu_boost;
         }
 
-        return 0;
+        0
     }
 
     pub fn get_gpu_boost(&mut self, ac:usize) -> u8 {
@@ -408,7 +408,7 @@ impl DeviceManager {
             return config.gpu_boost;
         }
 
-        return 0;
+        0
     }
 
     pub fn set_ac_state(&mut self, ac: bool) {
@@ -445,22 +445,22 @@ impl DeviceManager {
     }
 
     pub fn get_device(&mut self) -> Option<&mut RazerLaptop> {
-        return self.device.as_mut();
+        self.device.as_mut()
     }
 
     pub fn set_bho_handler(&mut self, is_on: bool, threshold: u8) -> bool {
-        return self.get_device()
-            .map_or(false, |laptop| laptop.set_bho(is_on, threshold));
+        self.get_device()
+            .map_or(false, |laptop| laptop.set_bho(is_on, threshold))
     }
 
     pub fn get_bho_handler(&mut self) -> Option<(bool, u8)> {
-        return self.get_device()
+        self.get_device()
             .and_then(|laptop| laptop.get_bho()
-            .map(byte_to_bho));
+            .map(byte_to_bho))
     } 
 
     fn get_config(&mut  self) -> Option<&mut config::Configuration> {
-        return self.config.as_mut();
+        self.config.as_mut()
     }
 
     // pub fn set_device(&mut self, device: RazerLaptop) {
@@ -549,7 +549,7 @@ impl RazerLaptop {
     pub const STARLIGHT:u8 = 0x19;
 
     pub fn new(name: String, features: Vec<String>, fan: Vec<u16>, device: hidapi::HidDevice) -> RazerLaptop {
-        return RazerLaptop{
+        RazerLaptop {
             name,
             features,
             fan,
@@ -558,7 +558,7 @@ impl RazerLaptop {
             fan_rpm: 0,
             ac_state: 0,
             screensaver: false
-        };
+        }
     }
 
     pub fn set_screensaver(&mut self, active: bool) {
@@ -578,7 +578,7 @@ impl RazerLaptop {
         ret |= self.set_power_mode(config.power_mode, config.cpu_boost, config.gpu_boost);
         ret |= self.set_fan_rpm(config.fan_rpm as u16);
 
-        return ret;
+        ret
     }
 
     pub fn set_ac_state(&mut self, online: bool) -> usize {
@@ -588,19 +588,19 @@ impl RazerLaptop {
             self.ac_state = 0;
         }
 
-        return  self.ac_state as usize;
+        self.ac_state as usize
     }
 
     pub fn get_ac_state(&mut self) -> usize {
-        return self.ac_state as usize;
+        self.ac_state as usize
     }
 
     pub fn get_name(&self) -> String {
-        return self.name.clone();
+        self.name.clone()
     }
 
     pub fn have_feature(&mut self, fch: String) -> bool {
-        return self.features.contains(&fch);
+        self.features.contains(&fch)
     }
 
     fn clamp_fan(&mut self, rpm: u16) -> u8 {
@@ -611,7 +611,7 @@ impl RazerLaptop {
             return (self.fan[0] / 100) as u8;
         }
 
-        return (rpm / 100) as u8;
+        (rpm / 100) as u8
     }
 
     fn clamp_u8(&mut self, value: u8, min: u8, max: u8) ->u8 {
@@ -622,7 +622,7 @@ impl RazerLaptop {
             return min;
         }
 
-        return value;
+        value
     }
 
     pub fn set_standard_effect(&mut self, effect_id: u8, params: Vec<u8>) -> bool {
@@ -637,7 +637,7 @@ impl RazerLaptop {
             return true;
         }
 
-        return false;
+        false
     }
 
     pub fn set_custom_frame_data(&mut self, row: u8, data: Vec<u8>) {
@@ -663,7 +663,7 @@ impl RazerLaptop {
             return true;
         }
 
-        return false;
+        false
     }
 
     pub fn get_power_mode(&mut self, zone: u8) -> u8 {
@@ -675,7 +675,7 @@ impl RazerLaptop {
         if let Some(response) = self.device.send_report(report) {
             return response.args[2];
         }
-        return 0;
+        0
     }
 
     fn set_power(&mut self, zone: u8) -> bool {
@@ -691,7 +691,7 @@ impl RazerLaptop {
             return  true;
         }
 
-        return false;
+        false
     }
 
     pub fn get_cpu_boost(&mut self) -> u8 {
@@ -702,7 +702,7 @@ impl RazerLaptop {
         if let Some(response) = self.device.send_report(report) {
             return response.args[2];
         }
-        return 0;
+        0
     }
 
     fn set_cpu_boost(&mut self, mut boost: u8) -> bool {
@@ -717,7 +717,7 @@ impl RazerLaptop {
             return true;
         }
 
-        return false;
+        false
     }
 
     fn get_gpu_boost(&mut self) -> u8 {
@@ -728,7 +728,7 @@ impl RazerLaptop {
         if let Some(response) = self.device.send_report(report){
             return response.args[2];
         }
-        return 0;
+        0
     }
 
     fn set_gpu_boost(&mut self, boost: u8) -> bool {
@@ -739,7 +739,7 @@ impl RazerLaptop {
         if let Some(_) = self.device.send_report(report) {
             return true;
         }
-        return false;
+        false
     }
 
     pub fn set_power_mode(&mut self, mode: u8, cpu_boost: u8, gpu_boost: u8) -> bool {
@@ -760,7 +760,7 @@ impl RazerLaptop {
             self.set_power(0x02);
         }
 
-        return true;
+        true
     }
 
     fn set_rpm(&mut self, zone: u8) -> bool {
@@ -773,7 +773,7 @@ impl RazerLaptop {
             return true;
         }
 
-        return false;
+        false
     }
 
     pub fn set_fan_rpm(&mut self, value: u16) -> bool {
@@ -794,12 +794,12 @@ impl RazerLaptop {
             }
         }
 
-        return true;
+        true
     }
 
     pub fn get_fan_rpm(&mut self) -> u16 {
         let res: u16 = self.fan_rpm as u16;
-        return res * 100;
+        res * 100
     }
 
     pub fn set_logo_led_state(&mut self, mode: u8) -> bool {
@@ -823,7 +823,7 @@ impl RazerLaptop {
             return true;
         }
 
-        return false;
+        false
     }
 
     #[allow(dead_code)]
@@ -834,7 +834,7 @@ impl RazerLaptop {
         if let Some(response) = self.device.send_report(report){
             return response.args[2];
         }
-        return 0;
+        0
     }
 
     pub fn set_brightness(&mut self, brightness: u8) -> bool {
@@ -846,7 +846,7 @@ impl RazerLaptop {
             return true;
         }
 
-        return false;
+        false
     }
 
     pub fn get_brightness(&mut self) -> u8 {
@@ -857,7 +857,7 @@ impl RazerLaptop {
         if let Some(response) = self.device.send_report(report){
             return response.args[2];
         }
-        return 0;
+        0
     }
 
     pub fn get_bho(&mut self) -> Option<u8> {
@@ -868,8 +868,7 @@ impl RazerLaptop {
         let mut report: RazerPacket = RazerPacket::new(0x07, 0x92, 0x01);
         report.args[0] = 0x00;
 
-        return self.device.send_report(report)
-            .map(|resp| resp.args[0]);
+        self.device.send_report(report).map(|resp| resp.args[0])
     }
 
     pub fn set_bho(&mut self, is_on: bool, threshold: u8) -> bool {
@@ -880,12 +879,12 @@ impl RazerLaptop {
         let mut report = RazerPacket::new(0x07, 0x12, 0x01);
         report.args[0] = bho_to_byte(is_on, threshold);
 
-        return self.device.send_report(report)
+        self.device.send_report(report)
             .map_or(false, |r| { 
                 println!("Response Packet:\n{:#?}", r); 
                 true
             } 
-        );
+        )
     }
 
 }
@@ -893,12 +892,12 @@ impl RazerLaptop {
 // top bit flags whether battery health optimization is on or off
 // bottom bits are the actual threshold that it is set to
 fn byte_to_bho(u: u8) -> (bool, u8) {
-    return (u & (1 << 7) != 0, (u & 0b0111_1111));
+    (u & (1 << 7) != 0, (u & 0b0111_1111))
 }
 
 fn bho_to_byte(is_on: bool, threshold: u8) -> u8 {
     if is_on {
         return threshold | 0b1000_0000;
     }
-    return threshold;
+    threshold
 }

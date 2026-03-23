@@ -30,7 +30,6 @@ dead_code = "allow"
 [lints.clippy]
 get_first = "allow"
 # Allow this for now
-needless_return = "allow" # 88
 redundant_pattern_matching = "allow" # 10
 collapsible_match = "allow" # 3?
 permissions_set_readonly_false = "allow" #1
