@@ -28,7 +28,7 @@ is also code to run in `openrc`, but it is currently unmaintained.
 ## Supported Installation Methods
 
 We currently support installing the application via installation script and via
-Nixos Flake. The flake has no know maintainers but we try to keep it working.
+Nixos Flake. The flake has no known maintainers but we try to keep it working.
 
 ### Installing via script
 
