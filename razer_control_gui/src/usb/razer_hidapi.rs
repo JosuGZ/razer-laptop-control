@@ -61,15 +61,25 @@ impl RazerPacket {
 
 pub struct RazerHidapi {
     device: hidapi::HidDevice,
+    reports_sent: u64,
+    errors: u64,
+    busy_events: u64,
 }
 
 impl RazerHidapi {
 
     pub fn new(device: hidapi::HidDevice) -> Self {
-        RazerHidapi { device }
+        RazerHidapi {
+            device,
+            reports_sent: 0,
+            errors: 0,
+            busy_events: 0
+        }
     }
 
     pub fn send_report(&mut self, mut report: RazerPacket) -> Option<RazerPacket> {
+        self.reports_sent += 1;
+
         let mut last_error = None;
 
         for _ in 0..3 {
@@ -80,7 +90,9 @@ impl RazerHidapi {
         }
     
         if let Some(error) = last_error {
+            self.errors += 1;
             error!("Failed to send report: {error}");
+            self.print_stats();
         }
 
         // The original code always sleeps before giving up
@@ -122,7 +134,10 @@ impl RazerHidapi {
         }
 
         match response.status {
-            RazerPacket::RAZER_CMD_BUSY => anyhow::bail!("busy"),
+            RazerPacket::RAZER_CMD_BUSY => {
+                self.busy_events += 1;
+                anyhow::bail!("busy")
+            },
 
             RazerPacket::RAZER_CMD_SUCCESSFUL => Ok(response),
 
@@ -132,5 +147,17 @@ impl RazerHidapi {
 
             status => anyhow::bail!("unknown response status: {status}"),
         }
+    }
+
+    fn print_stats(&self) {
+        let busy_events_percent = if self.reports_sent == 0 {
+            0f32
+        } else {
+            self.busy_events as f32 / self.reports_sent as f32 * 100f32
+        };
+
+        warn!("Reports sent: {}", self.reports_sent);
+        warn!("Busy events: {} ({busy_events_percent}%)", self.busy_events);
+        warn!("Errors: {}", self.errors);
     }
 }
