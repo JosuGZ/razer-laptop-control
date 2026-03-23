@@ -8,6 +8,15 @@ I can be contacted on this discord server under the 'laptop-control' channel
 ## Install
 [Install](razer_control_gui/README.md)
 
+## Troubleshooting
+
+When having problems with the application, please share the following
+information:
+
+- Journal: `journalctl --user-unit razercontrol > razercontrol.journal.log`
+- Output from `razer-cli device-info`
+- Output from `systemctl --user status razercontrol`
+
 ## What does this control
 On all razer notebooks, the following is supported:
 * RGB keyboard control (Experimental)
