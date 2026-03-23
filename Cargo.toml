@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = [
+  "razer_control_gui",
+]
+
+[workspace.lints.rust]
+
+[workspace.lints.clippy]
+
+[workspace.dependencies]
