@@ -32,7 +32,7 @@ pub struct RazerPacket {
 impl RazerPacket {
 // Command status
     const RAZER_CMD_NEW:u8 = 0x00;
-    // const RAZER_CMD_BUSY:u8 = 0x01;
+    const RAZER_CMD_BUSY:u8 = 0x01;
     const RAZER_CMD_SUCCESSFUL:u8 = 0x02;
     // const RAZER_CMD_FAILURE:u8 = 0x03;
     // const RAZER_CMD_TIMEOUT:u8 =0x04;
@@ -945,19 +945,17 @@ impl RazerLaptop {
     }
 
     fn send_report(&mut self, mut report: RazerPacket) -> Option<RazerPacket> {
-        // debug!("Sending report: {report:?}");
+        let mut last_error = None;
 
-        for i in 0..3 {
+        for _ in 0..3 {
             match self.send_report_inner(&mut report) {
                 Ok(packet) => return Some(packet),
-                Err(error) => {
-                    if i<2 {
-                        warn!("Failed to send report: {error}, retrying");
-                    } else {
-                        error!("Failed to send report: {error}");
-                    }
-                }
+                Err(error) => last_error = Some(error)
             }
+        }
+    
+        if let Some(error) = last_error {
+            error!("Failed to send report: {error}");
         }
 
         // The original code always sleeps before giving up
@@ -977,7 +975,9 @@ impl RazerLaptop {
         let size = self.device.get_feature_report(&mut temp_buf)
             .context("failed to get feature report")?;
 
-        if size != 91 { anyhow::bail!("invalid report length. Expected: 91, got: {size}"); }
+        if size != 91 {
+            anyhow::bail!("invalid report length. Expected: 91, got: {size}");
+        }
         
         let response = bincode::deserialize::<RazerPacket>(&temp_buf)
             .context("failed to deserialize packet")?;
@@ -997,11 +997,15 @@ impl RazerLaptop {
         }
 
         match response.status {
+            RazerPacket::RAZER_CMD_BUSY => anyhow::bail!("busy"),
+
             RazerPacket::RAZER_CMD_SUCCESSFUL => return Ok(response),
+
             RazerPacket::RAZER_CMD_NOT_SUPPORTED => {
-                anyhow::bail!("command not supported");    
-            }
-            status => anyhow::bail!("unknown response status: {status}")
+                anyhow::bail!("command not supported");
+            },
+
+            status => anyhow::bail!("unknown response status: {status}"),
         };
     }
 
