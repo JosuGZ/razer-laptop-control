@@ -35,16 +35,16 @@ install() {
     mkdir -p ~/.local/share/razercontrol
     sudo bash <<EOF
         mkdir -p /usr/share/razercontrol
-        cp ../target/release/razer-cli /usr/bin/
-        cp ../target/release/razer-settings /usr/bin/
+        cp target/release/razer-cli /usr/bin/
+        cp target/release/razer-settings /usr/bin/
         if ls /usr/share/applications/*.desktop 1> /dev/null 2>&1; then
             # We only install the desktop file if there are already desktop
             # files on the system
-            cp data/gui/razer-settings.desktop /usr/share/applications/
+            cp razer_control_gui/data/gui/razer-settings.desktop /usr/share/applications/
         fi
-        cp ../target/release/daemon /usr/share/razercontrol/
-        cp data/devices/laptops.json /usr/share/razercontrol/
-        cp data/udev/99-hidraw-permissions.rules /etc/udev/rules.d/
+        cp target/release/daemon /usr/share/razercontrol/
+        cp razer_control_gui/data/devices/laptops.json /usr/share/razercontrol/
+        cp razer_control_gui/data/udev/99-hidraw-permissions.rules /etc/udev/rules.d/
         udevadm control --reload-rules
 EOF
 
@@ -57,12 +57,12 @@ EOF
     echo "Starting the service..."
     case $INIT_SYSTEM in
     systemd)
-        sudo cp data/services/systemd/razercontrol.service /etc/systemd/user/
+        sudo cp razer_control_gui/data/services/systemd/razercontrol.service /etc/systemd/user/
         systemctl --user enable --now razercontrol
         ;;
     openrc)
         sudo bash <<EOF
-            cp data/services/openrc/razercontrol /etc/init.d/
+            cp razer_control_gui/data/services/openrc/razercontrol /etc/init.d/
             # HACK: Change the username in the script
             sed -i 's/USERNAME_CHANGEME/$USER/' /etc/init.d/razercontrol
 
