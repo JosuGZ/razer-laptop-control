@@ -1,6 +1,7 @@
 // mod kbd;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
+use anyhow::Context;
 use service::usb::RAZER_VENDOR_ID;
 use service::SupportedDevice;
 use std::{thread, time, io};
@@ -9,6 +10,8 @@ use crate::dbus_mutter_idlemonitor;
 use crate::config;
 use crate::battery;
 use dbus::blocking::Connection;
+
+use log::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RazerPacket {
@@ -941,56 +944,65 @@ impl RazerLaptop {
         );
     }
 
-    fn send_report(&mut self, mut report: RazerPacket) -> Option<RazerPacket>{
-        let mut temp_buf: [u8; 91] = [0x00; 91];
-        for _ in 0..3 {
-            match self.device.send_feature_report(report.calc_crc().as_slice()) {
-                Ok(_) => {
-                    thread::sleep(time::Duration::from_micros(1000));
-                    match self.device.get_feature_report(&mut temp_buf) {
-                        Ok(size) => {
-                            if size == 91 {
-                                match bincode::deserialize::<RazerPacket>(&temp_buf){
-                                    Ok(response) => {
-                                        // when request bho status the response command id is different from the request command id...
-                                        if response.command_id == 0x92 {
-                                            return Some(response);
-                                        }
+    fn send_report(&mut self, mut report: RazerPacket) -> Option<RazerPacket> {
+        // debug!("Sending report: {report:?}");
 
-                                        if response.remaining_packets != report.remaining_packets || 
-                                            response.command_class != report.command_class ||
-                                                response.command_id != report.command_id {
-                                                    eprintln!("Response doesn't match request");
-                                                }
-                                        else if response.status == RazerPacket::RAZER_CMD_SUCCESSFUL {
-                                            return Some(response);
-                                        }
-                                        if response.status == RazerPacket::RAZER_CMD_NOT_SUPPORTED {
-                                            eprintln!("Command not supported");
-                                        }
-                                    },
-                                    Err(e) => {
-                                        eprintln!("Error: {}", e);
-                                    }
-                                }
-                            } else {
-                                eprintln!("Invalid report length: {:?}", size);
-                            }
-                        },
-                        Err(e) => {
-                            eprintln!("Error: {}", e);
-                        }
+        for i in 0..3 {
+            match self.send_report_inner(&mut report) {
+                Ok(packet) => return Some(packet),
+                Err(error) => {
+                    if i<2 {
+                        warn!("Failed to send report: {error}, retrying");
+                    } else {
+                        error!("Failed to send report: {error}");
                     }
-                },
-                Err(e) => {
-                    eprintln!("Error: {}", e);
                 }
-            };
-
+            }
         }
 
+        // The original code always sleeps before giving up
         thread::sleep(time::Duration::from_micros(8000));
-        return None;
+
+        None
+    }
+
+    fn send_report_inner(&mut self, report: &mut RazerPacket) -> anyhow::Result<RazerPacket>{
+        let mut temp_buf: [u8; 91] = [0x00; 91];
+
+        self.device.send_feature_report(report.calc_crc().as_slice())
+            .context("failed to send feature report")?;
+                
+        thread::sleep(time::Duration::from_micros(1000));
+
+        let size = self.device.get_feature_report(&mut temp_buf)
+            .context("failed to get feature report")?;
+
+        if size != 91 { anyhow::bail!("invalid report length. Expected: 91, got: {size}"); }
+        
+        let response = bincode::deserialize::<RazerPacket>(&temp_buf)
+            .context("failed to deserialize packet")?;
+
+        // when request bho status the response command id is different from the request command id...
+        if response.command_id == 0x92 {
+            return Ok(response);
+        }
+
+        let response_matches_report = 
+            response.remaining_packets == report.remaining_packets &&
+            response.command_class == report.command_class &&
+            response.command_id == report.command_id;
+
+        if !response_matches_report {
+            anyhow::bail!("response doesn't match request");
+        }
+
+        match response.status {
+            RazerPacket::RAZER_CMD_SUCCESSFUL => return Ok(response),
+            RazerPacket::RAZER_CMD_NOT_SUPPORTED => {
+                anyhow::bail!("command not supported");    
+            }
+            status => anyhow::bail!("unknown response status: {status}")
+        };
     }
 
 }
