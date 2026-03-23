@@ -39,6 +39,9 @@ new_ret_no_self = "allow" #1
 needless_range_loop = "allow" # 1
 
 [dependencies]
+log = { workspace = true }
+env_logger = { workspace = true }
+anyhow = { workspace = true }
 dbus = "0.9.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -51,6 +54,3 @@ serde-big-array = "0.5.1"
 clap = { version = "4.4.13", features = ["derive"] }
 gtk = "0.18.1"
 glib = "0.19.7"
-log = "0.4.22"
-env_logger = "0.11.5"
-anyhow = "1.0.102"
