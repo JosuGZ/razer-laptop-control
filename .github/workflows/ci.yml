@@ -45,7 +45,7 @@ jobs:
       # According to this, sudo sould run ok: https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#administrative-privileges
       run: ./install.sh install
     - name: "Check installation"
-      run: ../ci-helpers/check-installation.sh
+      run: ./ci-helpers/check-installation.sh
 
   build-nix:
     name: "Build and check Nix"
