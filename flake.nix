@@ -35,8 +35,6 @@
             gtk3
           ];
 
-          src = .;
-
           postBuild =
             let
               app = "razer-settings";
@@ -64,7 +62,7 @@
           '';
 
           cargoLock = {
-            lockFile = ./razer_control_gui/Cargo.lock;
+            lockFile = ./Cargo.lock;
           };
         };
       }
