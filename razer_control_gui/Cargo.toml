@@ -24,10 +24,21 @@ path = "src/razer-settings/razer-settings.rs"
 # path = "src/gui.rs"
 
 [lints.rust]
+# Allow this for now
+dead_code = "allow"
 
 [lints.clippy]
 get_first = "allow"
-all = "allow"
+# Allow this for now
+needless_return = "allow" # 88
+redundant_pattern_matching = "allow" # 10
+collapsible_match = "allow" # 3?
+permissions_set_readonly_false = "allow" #1
+single_match = "allow" #2
+unnecessary_map_or = "allow" # 2
+manual_memcpy = "allow" # 2
+new_ret_no_self = "allow" #1
+needless_range_loop = "allow" # 1
 
 [dependencies]
 dbus = "0.9.7"

@@ -123,7 +123,6 @@ impl Effect for StaticGradient {
 /// STATIC_BLEND KEYBOARD EFFECT
 /// 2 colours forming a gradient, animated across the keyboard
 ///
-
 pub struct WaveGradient {
     kbd: board::KeyboardData,
     args: [u8; 6],
@@ -233,9 +232,9 @@ impl Effect for BreathSingle {
             target_colour: board::AnimatorKeyColour::new_u(args[0], args[1], args[2]),
             current_colour: board::AnimatorKeyColour::new_u(0, 0, 0),
             animator_step_colour: board::AnimatorKeyColour::new_f(
-                args[0] as f32 / (cycle_duration_ms as f32 / ANIMATION_SLEEP_MS as f32) as f32,
-                args[1] as f32 / (cycle_duration_ms as f32 / ANIMATION_SLEEP_MS as f32) as f32,
-                args[2] as f32 / (cycle_duration_ms as f32 / ANIMATION_SLEEP_MS as f32) as f32,
+                args[0] as f32 / (cycle_duration_ms / ANIMATION_SLEEP_MS as f32),
+                args[1] as f32 / (cycle_duration_ms / ANIMATION_SLEEP_MS as f32),
+                args[2] as f32 / (cycle_duration_ms / ANIMATION_SLEEP_MS as f32),
             ),
         })
     }

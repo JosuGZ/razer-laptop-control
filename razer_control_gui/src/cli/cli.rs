@@ -229,7 +229,7 @@ fn bho_toggle_on(threshold: u8) {
 
     send_data(comms::DaemonCommand::SetBatteryHealthOptimizer {
         is_on: true,
-        threshold: threshold,
+        threshold,
     })
     .map_or_else(
         || eprintln!("Unknown error occured when toggling bho"),
@@ -256,7 +256,7 @@ fn valid_bho_threshold(threshold: u8) -> bool {
         return false;
     }
 
-    if threshold < 50 || threshold > 80 {
+    if !(50..=80).contains(&threshold) {
         return false;
     }
 

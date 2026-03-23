@@ -52,16 +52,15 @@ impl DeviceManager {
                     println!("idle handler {:?}", id);
                     self.idle_id = id;
                 }
-            } else {
-                if self.idle_id != 0 {
-                    self.remove_watch(proxy_idle);
-                }
+            } else if self.idle_id != 0 {
+                self.remove_watch(proxy_idle);
             }
             self.change_idle = false;
         }
     }
 
     pub fn set_sync(&mut self, sync: bool) -> bool {
+        debug!("called: set_sync");
         let mut ac: usize = 0;
         if let Some(laptop) = self.get_device() {
             ac = laptop.ac_state as usize;
@@ -457,7 +456,7 @@ impl DeviceManager {
     pub fn get_bho_handler(&mut self) -> Option<(bool, u8)> {
         return self.get_device()
             .and_then(|laptop| laptop.get_bho()
-            .map(|result| byte_to_bho(result)));
+            .map(byte_to_bho));
     } 
 
     fn get_config(&mut  self) -> Option<&mut config::Configuration> {
