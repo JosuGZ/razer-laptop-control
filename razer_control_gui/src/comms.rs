@@ -60,11 +60,7 @@ pub enum DaemonResponse {
 
 #[allow(dead_code)]
 pub fn bind() -> Option<UnixStream> {
-    if let Ok(socket) = UnixStream::connect(SOCKET_PATH) {
-        Some(socket)
-    } else {
-        None
-    }
+    UnixStream::connect(SOCKET_PATH).ok()
 }
 
 #[allow(dead_code)]
