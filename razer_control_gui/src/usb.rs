@@ -1,5 +1,7 @@
 use hidapi::{HidApi, HidResult};
 
+pub mod razer_hidapi;
+
 pub const RAZER_VENDOR_ID: u16 = 0x1532;
 
 pub struct Device {
@@ -8,6 +10,7 @@ pub struct Device {
     pub product_id: u16
 }
 
+/// Gets a list of Razer Devices. Not all of them are laptops.
 pub fn razer_devices() -> HidResult<Vec<Device>> {
     let hid_api = HidApi::new()?;
 

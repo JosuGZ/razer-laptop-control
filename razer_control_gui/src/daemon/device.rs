@@ -1,10 +1,9 @@
 // mod kbd;
-use serde::{Deserialize, Serialize};
-use serde_big_array::BigArray;
-use anyhow::Context;
-use service::usb::RAZER_VENDOR_ID;
 use service::SupportedDevice;
-use std::{thread, time, io};
+use service::usb::RAZER_VENDOR_ID;
+use service::usb::razer_hidapi::RazerHidapi;
+use service::usb::razer_hidapi::RazerPacket;
+use std::{time, io};
 use hidapi::HidApi;
 use crate::dbus_mutter_idlemonitor;
 use crate::config;
@@ -12,60 +11,6 @@ use crate::battery;
 use dbus::blocking::Connection;
 
 use log::*;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RazerPacket {
-    report: u8,
-    status: u8,
-    id: u8,
-    remaining_packets: u16,
-    protocol_type: u8,
-    data_size: u8,
-    command_class: u8,
-    command_id: u8,
-    #[serde(with = "BigArray")]
-    args: [u8; 80],
-    crc: u8,
-    reserved: u8,
-}
-
-impl RazerPacket {
-// Command status
-    const RAZER_CMD_NEW:u8 = 0x00;
-    const RAZER_CMD_BUSY:u8 = 0x01;
-    const RAZER_CMD_SUCCESSFUL:u8 = 0x02;
-    // const RAZER_CMD_FAILURE:u8 = 0x03;
-    // const RAZER_CMD_TIMEOUT:u8 =0x04;
-    const RAZER_CMD_NOT_SUPPORTED:u8 = 0x05;
-
-    fn new(command_class: u8, command_id: u8, data_size: u8) -> RazerPacket {
-        return RazerPacket {
-            report: 0x00,
-            status: RazerPacket::RAZER_CMD_NEW,
-            id: 0x1F,
-            remaining_packets: 0x0000,
-            protocol_type: 0x00,
-            data_size,
-            command_class,
-            command_id,
-            args: [0x00; 80],
-            crc: 0x00,
-            reserved: 0x00,
-        };
-    }
-
-    fn calc_crc(&mut self) -> Vec<u8>{
-        let mut res: u8 = 0x00;
-        let buf: Vec<u8> = bincode::serialize(self).unwrap();
-        for i in 2..88 {
-            res ^= buf[i];
-        }
-
-        self.crc = res;
-        return buf;
-    }
-}
-
 pub struct DeviceManager {
     pub device: Option <RazerLaptop>,
     supported_devices: Vec<SupportedDevice>,
@@ -578,7 +523,7 @@ pub struct RazerLaptop {
     name: String,
     features: Vec<String>,
     fan: Vec<u16>,
-    device: hidapi::HidDevice,
+    device: RazerHidapi,
     power: u8, // need for fan
     fan_rpm: u8, // need for power
     ac_state: u8, // index config array
@@ -609,7 +554,7 @@ impl RazerLaptop {
             name,
             features,
             fan,
-            device,
+            device: RazerHidapi::new(device),
             power: 0,
             fan_rpm: 0,
             ac_state: 0,
@@ -689,7 +634,7 @@ impl RazerLaptop {
                 report.args[idx+1] = params[idx];
             }
         }
-        if let Some(_) = self.send_report(report) {
+        if let Some(_) = self.device.send_report(report) {
             return true;
         }
 
@@ -707,7 +652,7 @@ impl RazerLaptop {
             for idx in 0..data.len() {
                 report.args[idx + 7] = data[idx];
             }
-            self.send_report(report);
+            self.device.send_report(report);
         }
     }
 
@@ -715,7 +660,7 @@ impl RazerLaptop {
         let mut report: RazerPacket = RazerPacket::new(0x03, 0x0a, 0x02);
         report.args[0] = RazerLaptop::CUSTOMFRAME; // effect id
         report.args[1] = RazerLaptop::NOSTORE;
-        if let Some(_) = self.send_report(report) {
+        if let Some(_) = self.device.send_report(report) {
             return true;
         }
 
@@ -728,7 +673,7 @@ impl RazerLaptop {
         report.args[1] = zone;
         report.args[2] = 0x00;
         report.args[3] = 0x00;
-        if let Some(response) = self.send_report(report) {
+        if let Some(response) = self.device.send_report(report) {
             return response.args[2];
         }
         return 0;
@@ -743,7 +688,7 @@ impl RazerLaptop {
             0 => report.args[3] = 0x00,
             _ => report.args[3] = 0x01
         }
-        if let Some(_) = self.send_report(report) {
+        if let Some(_) = self.device.send_report(report) {
             return  true;
         }
 
@@ -755,7 +700,7 @@ impl RazerLaptop {
         report.args[0] = 0x00;
         report.args[1] = 0x01;
         report.args[2] = 0x00;
-        if let Some(response) = self.send_report(report) {
+        if let Some(response) = self.device.send_report(report) {
             return response.args[2];
         }
         return 0;
@@ -769,7 +714,7 @@ impl RazerLaptop {
         report.args[0] = 0x00;
         report.args[1] = 0x01;
         report.args[2] = boost;
-        if let Some(_)= self.send_report(report) {
+        if let Some(_)= self.device.send_report(report) {
             return true;
         }
 
@@ -781,7 +726,7 @@ impl RazerLaptop {
         report.args[0] = 0x00;
         report.args[1] = 0x02;
         report.args[2] = 0x00;
-        if let Some(response) = self.send_report(report){
+        if let Some(response) = self.device.send_report(report){
             return response.args[2];
         }
         return 0;
@@ -792,7 +737,7 @@ impl RazerLaptop {
         report.args[0] = 0x00;
         report.args[1] = 0x02;
         report.args[2] = boost;
-        if let Some(_) = self.send_report(report) {
+        if let Some(_) = self.device.send_report(report) {
             return true;
         }
         return false;
@@ -825,7 +770,7 @@ impl RazerLaptop {
         report.args[0] = 0x00;
         report.args[1] = zone;
         report.args[2] = self.fan_rpm;
-        if let Some(_) = self.send_report(report) {
+        if let Some(_) = self.device.send_report(report) {
             return true;
         }
 
@@ -868,14 +813,14 @@ impl RazerLaptop {
             } else if mode == 2 {
                 report.args[2] = 0x02;
             }
-            self.send_report(report);
+            self.device.send_report(report);
         }
 
         let mut report: RazerPacket = RazerPacket::new(0x03, 0x00, 0x03);
         report.args[0] = RazerLaptop::VARSTORE;
         report.args[1] = RazerLaptop::LOGO_LED;
         report.args[2] = self.clamp_u8(mode, 0x00, 0x01);
-        if let Some(_) = self.send_report(report) {
+        if let Some(_) = self.device.send_report(report) {
             return true;
         }
 
@@ -887,7 +832,7 @@ impl RazerLaptop {
         let mut report: RazerPacket = RazerPacket::new(0x03, 0x82, 0x03);
         report.args[0] = RazerLaptop::VARSTORE;
         report.args[1] = RazerLaptop::LOGO_LED;
-        if let Some(response) = self.send_report(report){
+        if let Some(response) = self.device.send_report(report){
             return response.args[2];
         }
         return 0;
@@ -898,7 +843,7 @@ impl RazerLaptop {
         report.args[0] = RazerLaptop::VARSTORE;
         report.args[1] = RazerLaptop::BACKLIGHT_LED;
         report.args[2] = brightness;
-        if let Some(_) = self.send_report(report) {
+        if let Some(_) = self.device.send_report(report) {
             return true;
         }
 
@@ -910,7 +855,7 @@ impl RazerLaptop {
         report.args[0] = RazerLaptop::VARSTORE;
         report.args[1] = RazerLaptop::BACKLIGHT_LED;
         report.args[2] = 0x00;
-        if let Some(response) = self.send_report(report){
+        if let Some(response) = self.device.send_report(report){
             return response.args[2];
         }
         return 0;
@@ -924,7 +869,7 @@ impl RazerLaptop {
         let mut report: RazerPacket = RazerPacket::new(0x07, 0x92, 0x01);
         report.args[0] = 0x00;
 
-        return self.send_report(report)
+        return self.device.send_report(report)
             .map(|resp| resp.args[0]);
     }
 
@@ -936,77 +881,12 @@ impl RazerLaptop {
         let mut report = RazerPacket::new(0x07, 0x12, 0x01);
         report.args[0] = bho_to_byte(is_on, threshold);
 
-        return self.send_report(report)
+        return self.device.send_report(report)
             .map_or(false, |r| { 
                 println!("Response Packet:\n{:#?}", r); 
                 true
             } 
         );
-    }
-
-    fn send_report(&mut self, mut report: RazerPacket) -> Option<RazerPacket> {
-        let mut last_error = None;
-
-        for _ in 0..3 {
-            match self.send_report_inner(&mut report) {
-                Ok(packet) => return Some(packet),
-                Err(error) => last_error = Some(error)
-            }
-        }
-    
-        if let Some(error) = last_error {
-            error!("Failed to send report: {error}");
-        }
-
-        // The original code always sleeps before giving up
-        thread::sleep(time::Duration::from_micros(8000));
-
-        None
-    }
-
-    fn send_report_inner(&mut self, report: &mut RazerPacket) -> anyhow::Result<RazerPacket>{
-        let mut temp_buf: [u8; 91] = [0x00; 91];
-
-        self.device.send_feature_report(report.calc_crc().as_slice())
-            .context("failed to send feature report")?;
-                
-        thread::sleep(time::Duration::from_micros(1000));
-
-        let size = self.device.get_feature_report(&mut temp_buf)
-            .context("failed to get feature report")?;
-
-        if size != 91 {
-            anyhow::bail!("invalid report length. Expected: 91, got: {size}");
-        }
-        
-        let response = bincode::deserialize::<RazerPacket>(&temp_buf)
-            .context("failed to deserialize packet")?;
-
-        // when request bho status the response command id is different from the request command id...
-        if response.command_id == 0x92 {
-            return Ok(response);
-        }
-
-        let response_matches_report = 
-            response.remaining_packets == report.remaining_packets &&
-            response.command_class == report.command_class &&
-            response.command_id == report.command_id;
-
-        if !response_matches_report {
-            anyhow::bail!("response doesn't match request");
-        }
-
-        match response.status {
-            RazerPacket::RAZER_CMD_BUSY => anyhow::bail!("busy"),
-
-            RazerPacket::RAZER_CMD_SUCCESSFUL => return Ok(response),
-
-            RazerPacket::RAZER_CMD_NOT_SUPPORTED => {
-                anyhow::bail!("command not supported");
-            },
-
-            status => anyhow::bail!("unknown response status: {status}"),
-        };
     }
 
 }
