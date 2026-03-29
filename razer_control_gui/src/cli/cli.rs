@@ -6,7 +6,7 @@ mod comms;
 mod args;
 
 use args::*;
-use service::usb::razer_devices;
+use razer_laptop::razer_devices;
 
 fn main() {
     let cli = Cli::parse();

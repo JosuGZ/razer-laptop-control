@@ -1,8 +1,8 @@
 // mod kbd;
 use service::SupportedDevice;
-use service::usb::RAZER_VENDOR_ID;
-use service::usb::razer_hidapi::RazerHidapi;
-use service::usb::razer_hidapi::RazerPacket;
+use razer_laptop::RAZER_VENDOR_ID;
+use razer_laptop::razer_hidapi::RazerHidapi;
+use razer_laptop::razer_hidapi::RazerPacket;
 use std::{time, io};
 use hidapi::HidApi;
 use crate::dbus_mutter_idlemonitor;

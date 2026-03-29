@@ -893,6 +893,14 @@ dependencies = [
 [[package]]
 name = "razer-laptop"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "hidapi",
+ "log",
+ "serde",
+ "serde-big-array",
+]
 
 [[package]]
 name = "regex"
@@ -1007,8 +1015,8 @@ dependencies = [
  "hidapi",
  "log",
  "rand",
+ "razer-laptop",
  "serde",
- "serde-big-array",
  "serde_json",
  "signal-hook",
  "systemstat",
