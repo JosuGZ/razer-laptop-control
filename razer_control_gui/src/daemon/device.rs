@@ -1,10 +1,9 @@
 // mod kbd;
 use service::SupportedDevice;
-use razer_laptop::RAZER_VENDOR_ID;
+use razer_laptop::razer_devices;
 use razer_laptop::razer_hidapi::RazerHidapi;
 use razer_laptop::razer_hidapi::RazerPacket;
 use std::{time, io};
-use hidapi::HidApi;
 use crate::dbus_mutter_idlemonitor;
 use crate::config;
 use crate::battery;
@@ -482,32 +481,27 @@ impl DeviceManager {
     }
 
     pub fn discover_devices(&mut self)  {
-        // Check if socket is OK
-        match HidApi::new() {
-            Ok(api) => {
-                let devices = api.device_list()
-                    .filter(|d| d.vendor_id() == RAZER_VENDOR_ID)
-                    .filter(|d| d.interface_number() == 0);
-
+        match razer_devices() {
+            Ok(devices) => {
                 for device in devices {
 
-                    let result = self.find_supported_device(device.vendor_id(), device.product_id());
+                    let result = self.find_supported_device(device.vendor_id, device.product_id);
                     if let Some(supported_device) = result {
 
-                        match api.open_path(device.path()) {
-                            Ok(dev) => {
+                        match device.open() {
+                            Ok(device) => {
                                 self.device = Some(RazerLaptop::new(
                                     supported_device.name.clone(),
                                     supported_device.features.clone(),
                                     supported_device.fan.clone(),
-                                    dev
+                                    device
                                 ));
                                 break;
-                            },
+                            }
                             Err(e) => {
                                 eprintln!("Error: {}", e);
                             }
-                        };
+                        }
                     }
                 }
             },
@@ -548,12 +542,12 @@ impl RazerLaptop {
     #[allow(dead_code)]
     pub const STARLIGHT:u8 = 0x19;
 
-    pub fn new(name: String, features: Vec<String>, fan: Vec<u16>, device: hidapi::HidDevice) -> RazerLaptop {
+    pub fn new(name: String, features: Vec<String>, fan: Vec<u16>, device: RazerHidapi) -> RazerLaptop {
         RazerLaptop {
             name,
             features,
             fan,
-            device: RazerHidapi::new(device),
+            device,
             power: 0,
             fan_rpm: 0,
             ac_state: 0,
