@@ -50,8 +50,9 @@ impl RazerPacket {
     fn calc_crc(&mut self) -> Vec<u8>{
         let mut res: u8 = 0x00;
         let buf: Vec<u8> = bincode::serialize(self).unwrap();
-        for i in 2..88 {
-            res ^= buf[i];
+
+        for byte in buf.iter().take(88).skip(2).copied() {
+            res ^= byte;
         }
 
         self.crc = res;

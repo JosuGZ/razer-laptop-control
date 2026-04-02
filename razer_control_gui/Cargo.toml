@@ -36,7 +36,6 @@ single_match = "allow" #2
 unnecessary_map_or = "allow" # 2
 manual_memcpy = "allow" # 2
 new_ret_no_self = "allow" #1
-needless_range_loop = "allow" # 1
 
 [dependencies]
 razer-laptop = { path = "../crates/razer-laptop" }
