@@ -50,8 +50,9 @@ impl RazerPacket {
     fn calc_crc(&mut self) -> Vec<u8>{
         let mut res: u8 = 0x00;
         let buf: Vec<u8> = bincode::serialize(self).unwrap();
+        debug_assert!(buf.len() == 89);
 
-        for byte in buf.iter().take(88).skip(2).copied() {
+        for byte in buf.iter().skip(2).copied() {
             res ^= byte;
         }
 
