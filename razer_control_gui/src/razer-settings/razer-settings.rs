@@ -1,4 +1,6 @@
+use std::cell::Cell;
 use std::io::ErrorKind;
+use std::rc::Rc;
 
 use gtk::prelude::*;
 use gtk::{glib, glib::clone};
@@ -21,6 +23,8 @@ use error_handling::*;
 use service::SupportedDevice;
 use util::*;
 use widgets::*;
+
+const COOLING_PAD_TAB_POSITION: i32 = 3;
 
 fn send_data(opt: comms::DaemonCommand) -> Option<comms::DaemonResponse> {
     match comms::try_bind() {
@@ -330,6 +334,10 @@ fn main() {
         let battery_settings_page = make_page(false, device.clone());
         let general_page = make_general_page();
         let cooling_pad_page = make_cooling_pad_page();
+        let cooling_pad_container = cooling_pad_page.master_container.clone();
+        let cooling_pad_visible = Rc::new(Cell::new(
+            get_cooling_pad_state().map_or(false, |state| state.0),
+        ));
         let about_page = make_about_page(device.clone());
 
         let stack = Stack::new();
@@ -342,11 +350,10 @@ fn main() {
             "Battery",
         );
         stack.add_titled(&general_page.master_container, "General", "General");
-        stack.add_titled(
-            &cooling_pad_page.master_container,
-            "CoolingPad",
-            "Cooling Pad",
-        );
+        if cooling_pad_visible.get() {
+            stack.add_titled(&cooling_pad_container, "CoolingPad", "Cooling Pad");
+            stack.set_child_position(&cooling_pad_container, COOLING_PAD_TAB_POSITION);
+        }
         stack.add_titled(&about_page.master_container, "About", "About");
 
         stack.connect_screen_changed(|_, _| {
@@ -383,6 +390,32 @@ fn main() {
         window.set_child(Some(&vbox));
 
         window.show_all();
+
+        glib::timeout_add_seconds_local(
+            2,
+            clone!(
+                @weak stack,
+                @strong cooling_pad_container,
+                @strong cooling_pad_visible
+                => @default-return glib::ControlFlow::Break, move || {
+                    if let Some((present, _, _, _)) = get_cooling_pad_state() {
+                        if present && !cooling_pad_visible.get() {
+                            stack.add_titled(&cooling_pad_container, "CoolingPad", "Cooling Pad");
+                            stack.set_child_position(&cooling_pad_container, COOLING_PAD_TAB_POSITION);
+                            cooling_pad_container.show_all();
+                            cooling_pad_visible.set(true);
+                        } else if !present && cooling_pad_visible.get() {
+                            if stack.visible_child_name().as_deref() == Some("CoolingPad") {
+                                stack.set_visible_child_name("General");
+                            }
+                            stack.remove(&cooling_pad_container);
+                            cooling_pad_visible.set(false);
+                        }
+                    }
+                    glib::ControlFlow::Continue
+                }
+            ),
+        );
 
         // If we know we are not running on AC, we show the battery tab by
         // default
@@ -728,33 +761,7 @@ fn make_general_page() -> SettingsPage {
     page
 }
 
-fn cooling_pad_effect_index(name: &str) -> u32 {
-    match name {
-        "static" => 1,
-        "spectrum" => 2,
-        "wave" => 3,
-        _ => 0,
-    }
-}
-
-fn cooling_pad_effect_name(index: u32) -> &'static str {
-    match index {
-        1 => "static",
-        2 => "spectrum",
-        3 => "wave",
-        _ => "off",
-    }
-}
-
-fn sync_cooling_pad_controls(
-    status_label: &Label,
-    switch: &Switch,
-    scale: &Scale,
-    present: bool,
-    fan_rpm: i32,
-) {
-    status_label.set_text(if present { "Connected" } else { "Disconnected" });
-
+fn sync_cooling_pad_controls(switch: &Switch, scale: &Scale, present: bool, fan_rpm: i32) {
     let auto = fan_rpm == 0;
     switch.set_sensitive(present);
     if switch.is_active() != auto {
@@ -768,15 +775,39 @@ fn sync_cooling_pad_controls(
     }
 }
 
+fn cooling_pad_effect_index(name: &str) -> u32 {
+    match name {
+        "static" => 1,
+        "breathing" => 2,
+        "wave" => 3,
+        _ => 0,
+    }
+}
+
+fn cooling_pad_effect_name(index: u32) -> &'static str {
+    match index {
+        1 => "static",
+        2 => "breathing",
+        3 => "wave",
+        _ => "off",
+    }
+}
+
+fn cooling_pad_effect_uses_color(effect: &str) -> bool {
+    matches!(effect, "static" | "breathing")
+}
+
+fn sync_cooling_pad_color_picker(color_picker: &ColorButton, effect_params: &[u8]) {
+    let red = f64::from(*effect_params.first().unwrap_or(&255)) / 255f64;
+    let green = f64::from(*effect_params.get(1).unwrap_or(&0)) / 255f64;
+    let blue = f64::from(*effect_params.get(2).unwrap_or(&0)) / 255f64;
+    let rgba = gtk::gdk::RGBA::new(red, green, blue, 1f64);
+    color_picker.set_rgba(&rgba);
+}
+
 fn make_cooling_pad_page() -> SettingsPage {
     let page = SettingsPage::new();
-    let state = get_cooling_pad_state().unwrap_or_else(|| (false, 0, "off".into(), vec![]));
-
-    let status_section = page.add_section(Some("Device"));
-    let label = Label::new(Some("Connection"));
-    let status_label = Label::new(Some(if state.0 { "Connected" } else { "Disconnected" }));
-    let row = SettingsRow::new(&label, &status_label);
-    status_section.add_row(&row.master_container);
+    let state = get_cooling_pad_state().unwrap_or_else(|| (false, 0, String::new(), vec![]));
 
     let fan_section = page.add_section(Some("Fan"));
     let label = Label::new(Some("Auto"));
@@ -790,33 +821,27 @@ fn make_cooling_pad_page() -> SettingsPage {
     let row = SettingsRow::new(&label, &fan_scale);
     fan_section.add_row(&row.master_container);
 
-    sync_cooling_pad_controls(
-        &status_label,
-        &fan_auto_switch,
-        &fan_scale,
-        state.0,
-        state.1,
-    );
+    sync_cooling_pad_controls(&fan_auto_switch, &fan_scale, state.0, state.1);
 
     fan_scale.connect_change_value(clone!(
-        @weak fan_auto_switch, @weak status_label
+        @weak fan_auto_switch
         => @default-return gtk::glib::Propagation::Stop, move |scale, _, value| {
             let value = value.clamp(500f64, 3200f64) as i32;
             let _ = set_cooling_pad_fan_speed(value);
             if let Some((present, fan_rpm, _, _)) = get_cooling_pad_state() {
-                sync_cooling_pad_controls(&status_label, &fan_auto_switch, scale, present, fan_rpm);
+                sync_cooling_pad_controls(&fan_auto_switch, scale, present, fan_rpm);
             }
             gtk::glib::Propagation::Stop
         }
     ));
 
     fan_auto_switch.connect_changed_active(clone!(
-        @weak fan_scale, @weak status_label
+        @weak fan_scale
         => move |switch| {
             let target = if switch.is_active() { 0 } else { fan_scale.value().clamp(500f64, 3200f64) as i32 };
             let _ = set_cooling_pad_fan_speed(target);
             if let Some((present, fan_rpm, _, _)) = get_cooling_pad_state() {
-                sync_cooling_pad_controls(&status_label, switch, &fan_scale, present, fan_rpm);
+                sync_cooling_pad_controls(switch, &fan_scale, present, fan_rpm);
             }
         }
     ));
@@ -826,7 +851,7 @@ fn make_cooling_pad_page() -> SettingsPage {
     let effect_options = ComboBoxText::new();
     effect_options.append_text("Off");
     effect_options.append_text("Static");
-    effect_options.append_text("Spectrum");
+    effect_options.append_text("Breathing");
     effect_options.append_text("Wave");
     effect_options.set_active(Some(cooling_pad_effect_index(&state.2)));
     let row = SettingsRow::new(&label, &effect_options);
@@ -834,8 +859,19 @@ fn make_cooling_pad_page() -> SettingsPage {
 
     let label = Label::new(Some("Color"));
     let color_picker = ColorButton::new();
+    sync_cooling_pad_color_picker(&color_picker, &state.3);
     let row = SettingsRow::new(&label, &color_picker);
-    rgb_section.add_row(&row.master_container);
+    let color_row = row.master_container;
+    rgb_section.add_row(&color_row);
+    color_row.set_visible(cooling_pad_effect_uses_color(&state.2));
+
+    effect_options.connect_changed(clone!(
+        @weak color_row
+        => move |options| {
+            let effect = cooling_pad_effect_name(options.active().unwrap_or(0));
+            color_row.set_visible(cooling_pad_effect_uses_color(effect));
+        }
+    ));
 
     let label = Label::new(Some("Write effect"));
     let write_button = Button::with_label("Write");
@@ -846,14 +882,13 @@ fn make_cooling_pad_page() -> SettingsPage {
         @weak effect_options, @weak color_picker
         => move |_| {
             let effect = cooling_pad_effect_name(effect_options.active().unwrap_or(0));
-            let color = color_picker.color();
-            let red = (color.red / 256) as u8;
-            let green = (color.green / 256) as u8;
-            let blue = (color.blue / 256) as u8;
+            let color = color_picker.rgba();
+            let red = (color.red() * 255f64).round().clamp(0f64, 255f64) as u8;
+            let green = (color.green() * 255f64).round().clamp(0f64, 255f64) as u8;
+            let blue = (color.blue() * 255f64).round().clamp(0f64, 255f64) as u8;
 
             let params = match effect {
-                "static" => vec![red, green, blue],
-                "wave" => vec![0],
+                "static" | "breathing" => vec![red, green, blue],
                 _ => vec![],
             };
 
@@ -866,16 +901,18 @@ fn make_cooling_pad_page() -> SettingsPage {
     glib::timeout_add_seconds_local(
         2,
         clone!(
-            @weak status_label,
             @weak fan_auto_switch,
             @weak fan_scale,
             @weak effect_options,
+            @weak color_row,
             @weak color_picker,
             @weak write_button
             => @default-return glib::ControlFlow::Break, move || {
                 if let Some((present, fan_rpm, _, _)) = get_cooling_pad_state() {
-                    sync_cooling_pad_controls(&status_label, &fan_auto_switch, &fan_scale, present, fan_rpm);
+                    sync_cooling_pad_controls(&fan_auto_switch, &fan_scale, present, fan_rpm);
                     effect_options.set_sensitive(present);
+                    let effect = cooling_pad_effect_name(effect_options.active().unwrap_or(0));
+                    color_row.set_visible(cooling_pad_effect_uses_color(effect));
                     color_picker.set_sensitive(present);
                     write_button.set_sensitive(present);
                 }
