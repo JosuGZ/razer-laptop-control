@@ -2,14 +2,13 @@
 
 use std::fs;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 const EMBEDDED_DEVICE_DATA: &str = include_str!("../data/devices/laptops.json");
 const DEVICE_FILE: &str = "/usr/share/razercontrol/laptops.json";
 
 pub fn get_device_data() -> String {
-    fs::read_to_string(DEVICE_FILE)
-        .unwrap_or(EMBEDDED_DEVICE_DATA.into())
+    fs::read_to_string(DEVICE_FILE).unwrap_or(EMBEDDED_DEVICE_DATA.into())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,7 +21,6 @@ pub struct SupportedDevice {
 }
 
 impl SupportedDevice {
-
     pub fn has_feature(&self, feature: &str) -> bool {
         self.features.iter().any(|f| f == feature)
     }
@@ -34,5 +32,4 @@ impl SupportedDevice {
     pub fn has_logo(&self) -> bool {
         self.has_feature("logo")
     }
-
 }

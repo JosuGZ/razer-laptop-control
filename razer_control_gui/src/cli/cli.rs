@@ -1,9 +1,9 @@
 use clap::error::ErrorKind;
 use clap::{CommandFactory, Parser};
 
+mod args;
 #[path = "../comms.rs"]
 mod comms;
-mod args;
 
 use args::*;
 use razer_laptop::razer_devices;
@@ -42,7 +42,7 @@ fn main() {
             }) => write_logo_mode(ac_state as usize, logo_state as u8),
             WriteAttr::Bho(BhoParams { state, threshold }) => {
                 validate_and_write_bho(threshold, state)
-            },
+            }
             WriteAttr::LightControl(LightControlParams { enable }) => {
                 write_light_control(enable.is_on())
             }
@@ -119,27 +119,23 @@ fn main() {
                 send_standard_effect("wave".to_string(), vec![params.direction])
             }
         },
-        Args::DeviceInfo => {
-            match razer_devices() {
-                Ok(devices) if devices.is_empty() => {
-                    println!("No razer devices found");
-                }
-                Ok(devices) => {
-                    println!("Found the following razer devices:");
-                    for device in devices{
-                        println!(
-                            "- {}:{} {}",
-                            device.vendor_id,
-                            device.product_id,
-                            device.name
-                        );
-                    }
-                }
-                Err(error) => {
-                    println!("Failed to get device info: {error}");
+        Args::DeviceInfo => match razer_devices() {
+            Ok(devices) if devices.is_empty() => {
+                println!("No razer devices found");
+            }
+            Ok(devices) => {
+                println!("Found the following razer devices:");
+                for device in devices {
+                    println!(
+                        "- {}:{} {}",
+                        device.vendor_id, device.product_id, device.name
+                    );
                 }
             }
-        }
+            Err(error) => {
+                println!("Failed to get device info: {error}");
+            }
+        },
     }
 }
 
@@ -205,7 +201,7 @@ fn read_light_control() {
             if let comms::DaemonResponse::GetEnableLightControl { enabled } = result {
                 match enabled {
                     true => println!("Light Control is enabled"),
-                    false => println!("Light Control is disabled")
+                    false => println!("Light Control is disabled"),
                 }
             }
         },
@@ -293,7 +289,7 @@ fn send_standard_effect(name: String, params: Vec<u8>) {
             } else {
                 eprintln!("Effect set FAIL!");
             }
-        },
+        }
         Some(_) => eprintln!("Unexpected response from daemon!"),
         None => eprintln!("Unknown daemon error!"),
     }
@@ -307,7 +303,7 @@ fn send_effect(name: String, params: Vec<u8>) {
             } else {
                 eprintln!("Effect set FAIL!");
             }
-        },
+        }
         Some(_) => eprintln!("Unexpected response from daemon!"),
         None => eprintln!("Unknown daemon error!"),
     }
@@ -319,7 +315,7 @@ fn send_data(opt: comms::DaemonCommand) -> Option<comms::DaemonResponse> {
         None => {
             eprintln!("Error. Cannot bind to socket");
             None
-        },
+        }
     }
 }
 
@@ -332,7 +328,7 @@ fn read_fan_rpm(ac: usize) {
                 _ => format!("{} RPM", rpm),
             };
             println!("Current fan setting: {}", rpm_desc);
-        },
+        }
         Some(_) => eprintln!("Daemon responded with invalid data!"),
         None => eprintln!("Unknown daemon error!"),
     }
@@ -348,7 +344,7 @@ fn read_logo_mode(ac: usize) {
                 _ => "Unknown",
             };
             println!("Current logo setting: {}", logo_state_desc);
-        },
+        }
         Some(_) => eprintln!("Daemon responded with invalid data!"),
         None => eprintln!("Unknown daemon error!"),
     }
@@ -400,7 +396,10 @@ fn read_power_mode(ac: usize) {
 fn write_pwr_mode(ac: usize, pwr_mode: u8, cpu_mode: Option<u8>, gpu_mode: Option<u8>) {
     if pwr_mode > 4 {
         Cli::command()
-            .error(ErrorKind::InvalidValue, "Power mode must be 0, 1, 2, 3 or 4")
+            .error(
+                ErrorKind::InvalidValue,
+                "Power mode must be 0, 1, 2, 3 or 4",
+            )
             .exit()
     }
 
@@ -435,14 +434,12 @@ fn write_pwr_mode(ac: usize, pwr_mode: u8, cpu_mode: Option<u8>, gpu_mode: Optio
         gpu: gm,
     }) {
         Some(_) => read_power_mode(ac),
-        None => {
-            Cli::command()
-                .error(
-                    ErrorKind::DisplayHelp,
-                    "An error occurred while sending the command to the daemon",
-                )
-                .exit()
-        },
+        None => Cli::command()
+            .error(
+                ErrorKind::DisplayHelp,
+                "An error occurred while sending the command to the daemon",
+            )
+            .exit(),
     }
 }
 
@@ -450,7 +447,7 @@ fn read_brightness(ac: usize) {
     match send_data(comms::DaemonCommand::GetBrightness { ac }) {
         Some(comms::DaemonResponse::GetBrightness { result }) => {
             println!("Current brightness: {}", result);
-        },
+        }
         Some(_) => eprintln!("Daemon responded with invalid data!"),
         None => eprintln!("Unknown daemon error!"),
     }
@@ -460,7 +457,7 @@ fn read_sync() {
     match send_data(comms::DaemonCommand::GetSync()) {
         Some(comms::DaemonResponse::GetSync { sync }) => {
             println!("Current sync: {:?}", sync);
-        },
+        }
         Some(_) => eprintln!("Daemon responded with invalid data!"),
         None => eprintln!("Unknown daemon error!"),
     }

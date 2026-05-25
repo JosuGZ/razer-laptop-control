@@ -14,7 +14,7 @@ impl<T> Crash for Option<T> {
     fn or_crash(self, msg: impl AsRef<str>) -> Self::Value {
         match self {
             Self::Some(v) => v,
-            Self::None => crash_with_msg(msg)
+            Self::None => crash_with_msg(msg),
         }
     }
 }
@@ -25,7 +25,7 @@ impl<T, E> Crash for Result<T, E> {
     fn or_crash(self, msg: impl AsRef<str>) -> Self::Value {
         match self {
             Self::Ok(v) => v,
-            Self::Err(_) => crash_with_msg(msg)
+            Self::Err(_) => crash_with_msg(msg),
         }
     }
 }
@@ -40,9 +40,11 @@ fn show_msg(msg: impl AsRef<str>) {
     let msg = format!("{}.\n\nThis is an alpha!", msg.as_ref());
 
     let msg_box = MessageDialog::new::<ApplicationWindow>(
-        None, DialogFlags::MODAL,
-        gtk::MessageType::Error, gtk::ButtonsType::Ok,
-        &msg
+        None,
+        DialogFlags::MODAL,
+        gtk::MessageType::Error,
+        gtk::ButtonsType::Ok,
+        &msg,
     );
     msg_box.set_title("The application has crashed");
 

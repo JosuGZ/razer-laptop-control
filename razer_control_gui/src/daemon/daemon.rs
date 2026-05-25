@@ -4,22 +4,22 @@ use std::sync::{LazyLock, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
 use std::time;
 
-use log::*;
-use signal_hook::iterator::Signals;
-use signal_hook::consts::{SIGINT, SIGTERM};
 use dbus::blocking::Connection;
-use dbus::{Message, arg};
+use dbus::{arg, Message};
+use log::*;
+use signal_hook::consts::{SIGINT, SIGTERM};
+use signal_hook::iterator::Signals;
 
 #[path = "../comms.rs"]
 mod comms;
 mod config;
-mod kbd;
-mod device;
 mod dbus_generated;
+mod device;
+mod kbd;
 
-use kbd::{Effect, EffectManager};
-use device::DeviceManager;
 use dbus_generated::*;
+use device::DeviceManager;
+use kbd::{Effect, EffectManager};
 
 static EFFECT_MANAGER: LazyLock<Mutex<EffectManager>> = LazyLock::new(init_effect_manager);
 static DEV_MANAGER: LazyLock<Mutex<DeviceManager>> = LazyLock::new(init_dev_manager);
@@ -37,13 +37,15 @@ fn init_dev_manager() -> Mutex<DeviceManager> {
 
 /// Returns a locked MutexGuard with the effect manager
 fn effect_manager() -> MutexGuard<'static, EffectManager> {
-    EFFECT_MANAGER.lock()
+    EFFECT_MANAGER
+        .lock()
         .expect("code should not panic while holding the effect manager guard")
 }
 
 /// Returns a locked MutexGuard with the device manager
 fn dev_manager() -> MutexGuard<'static, DeviceManager> {
-    DEV_MANAGER.lock()
+    DEV_MANAGER
+        .lock()
         .expect("code should not panic while holding the device manager guard")
 }
 
@@ -65,23 +67,25 @@ fn main() {
 
     {
         let mut d = dev_manager();
-        let dbus_system = Connection::new_system()
-            .expect("failed to connect to D-Bus system bus");
-        let proxy_ac = dbus_system.with_proxy("org.freedesktop.UPower", "/org/freedesktop/UPower/devices/line_power_AC0", time::Duration::from_millis(5000));
+        let dbus_system = Connection::new_system().expect("failed to connect to D-Bus system bus");
+        let proxy_ac = dbus_system.with_proxy(
+            "org.freedesktop.UPower",
+            "/org/freedesktop/UPower/devices/line_power_AC0",
+            time::Duration::from_millis(5000),
+        );
         use battery::OrgFreedesktopUPowerDevice;
         if let Ok(online) = proxy_ac.online() {
             info!("AC0 online: {:?}", online);
             d.set_ac_state(online);
+            d.refresh_cooling_pad();
             d.restore_standard_effect();
             if let Ok(json) = config::Configuration::read_effects_file() {
                 effect_manager().load_from_save(json);
             } else {
                 println!("No effects save, creating a new one");
                 // No effects found, start with a green static layer, just like synapse
-                effect_manager().push_effect(
-                    kbd::effects::Static::new(vec![0, 255, 0]), 
-                    [true; 90]
-                    );
+                effect_manager()
+                    .push_effect(kbd::effects::Static::new(vec![0, 255, 0]), [true; 90]);
             }
         } else {
             println!("error getting current power state");
@@ -90,6 +94,7 @@ fn main() {
     }
 
     start_keyboard_animator_task();
+    start_cooling_pad_monitor_task();
     start_screensaver_monitor_task();
     start_battery_monitor_task();
     let clean_thread = start_shutdown_task();
@@ -132,68 +137,95 @@ fn init_logging() {
 /// Handles keyboard animations
 pub fn start_keyboard_animator_task() -> JoinHandle<()> {
     // Start the keyboard animator thread,
-    thread::spawn(|| {
-        loop {
-            let light_control_enabled = dev_manager().get_light_control();
+    thread::spawn(|| loop {
+        let light_control_enabled = dev_manager().get_light_control();
 
-            if light_control_enabled {
-                if let Some(laptop) = dev_manager().get_device() {
-                    effect_manager().update(laptop);
-                }
+        if light_control_enabled {
+            if let Some(laptop) = dev_manager().get_device() {
+                effect_manager().update(laptop);
             }
-
-            thread::sleep(std::time::Duration::from_millis(kbd::ANIMATION_SLEEP_MS));
         }
+
+        thread::sleep(std::time::Duration::from_millis(kbd::ANIMATION_SLEEP_MS));
+    })
+}
+
+pub fn start_cooling_pad_monitor_task() -> JoinHandle<()> {
+    thread::spawn(|| loop {
+        dev_manager().refresh_cooling_pad();
+        thread::sleep(std::time::Duration::from_secs(2));
     })
 }
 
 fn start_screensaver_monitor_task() -> JoinHandle<()> {
     thread::spawn(move || {
-        let dbus_session = Connection::new_session()
-            .expect("failed to connect to D-Bus session bus");
-        let  proxy = dbus_session.with_proxy("org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig", time::Duration::from_millis(5000));
-        let _id = proxy.match_signal(|h: dbus_mutter_displayconfig::OrgFreedesktopDBusPropertiesPropertiesChanged, _: &Connection, _: &Message| {
-            let online: Option<&i32> = arg::prop_cast(&h.changed_properties, "PowerSaveMode");
-            if let Some(online) = online {
-                if *online == 3 {
-                    dev_manager().light_off();
+        let dbus_session =
+            Connection::new_session().expect("failed to connect to D-Bus session bus");
+        let proxy = dbus_session.with_proxy(
+            "org.gnome.Mutter.DisplayConfig",
+            "/org/gnome/Mutter/DisplayConfig",
+            time::Duration::from_millis(5000),
+        );
+        let _id = proxy.match_signal(
+            |h: dbus_mutter_displayconfig::OrgFreedesktopDBusPropertiesPropertiesChanged,
+             _: &Connection,
+             _: &Message| {
+                let online: Option<&i32> = arg::prop_cast(&h.changed_properties, "PowerSaveMode");
+                if let Some(online) = online {
+                    if *online == 3 {
+                        dev_manager().light_off();
+                    } else if *online == 0 {
+                        dev_manager().restore_light();
+                    }
                 }
-                else if *online == 0 {
-                    dev_manager().restore_light();
+                true
+            },
+        );
+        let proxy_idle = dbus_session.with_proxy(
+            "org.gnome.Mutter.IdleMonitor",
+            "/org/gnome/Mutter/IdleMonitor/Core",
+            time::Duration::from_millis(5000),
+        );
+        let _id = proxy_idle.match_signal(
+            |h: dbus_mutter_idlemonitor::OrgGnomeMutterIdleMonitorWatchFired,
+             _: &Connection,
+             _: &Message| {
+                {
+                    let mut d = dev_manager();
+                    if d.idle_id == h.id {
+                        println!("idle trigger {:?}", h.id);
+                        d.light_off();
+                    } else if d.active_id == h.id {
+                        println!("active trigger {:?}", h.id);
+                        d.restore_light();
+                    }
                 }
+                true
+            },
+        );
+        let proxy = dbus_session.with_proxy(
+            "org.freedesktop.ScreenSaver",
+            "/org/freedesktop/ScreenSaver",
+            time::Duration::from_millis(5000),
+        );
+        let _id = proxy.match_signal(
+            |h: screensaver::OrgFreedesktopScreenSaverActiveChanged,
+             _: &Connection,
+             _: &Message| {
+                println!("ActiveChanged {:?}", h.arg0);
+                {
+                    let mut d = dev_manager();
+                    if h.arg0 {
+                        d.light_off();
+                    } else {
+                        d.restore_light();
+                    }
+                }
+                true
+            },
+        );
 
-            } 
-            true
-        });
-        let  proxy_idle = dbus_session.with_proxy("org.gnome.Mutter.IdleMonitor", "/org/gnome/Mutter/IdleMonitor/Core", time::Duration::from_millis(5000));
-        let _id = proxy_idle.match_signal(|h: dbus_mutter_idlemonitor::OrgGnomeMutterIdleMonitorWatchFired, _: &Connection, _: &Message| {
-            {
-                let mut d = dev_manager();
-                if d.idle_id == h.id {
-                    println!("idle trigger {:?}", h.id);
-                    d.light_off();
-                } else if d.active_id == h.id {
-                    println!("active trigger {:?}", h.id);
-                    d.restore_light();
-                }
-            }
-            true
-        });
-        let proxy = dbus_session.with_proxy("org.freedesktop.ScreenSaver", "/org/freedesktop/ScreenSaver", time::Duration::from_millis(5000));
-        let _id = proxy.match_signal(|h: screensaver::OrgFreedesktopScreenSaverActiveChanged, _: &Connection, _: &Message| {
-            println!("ActiveChanged {:?}", h.arg0);
-            {
-                let mut d = dev_manager();
-                if h.arg0 {
-                    d.light_off();
-                } else {
-                    d.restore_light();
-                }
-            }
-            true
-        });
-
-        loop { 
+        loop {
             if let Ok(res) = dbus_session.process(time::Duration::from_millis(1000)) {
                 if res {
                     dev_manager().add_active_watch(&proxy_idle);
@@ -201,66 +233,79 @@ fn start_screensaver_monitor_task() -> JoinHandle<()> {
                 dev_manager().add_idle_watch(&proxy_idle);
             }
         }
-
     })
 }
 
 fn start_battery_monitor_task() -> JoinHandle<()> {
     thread::spawn(move || {
-        let dbus_system = Connection::new_system()
-            .expect("should be able to connect to D-Bus system bus");
+        let dbus_system =
+            Connection::new_system().expect("should be able to connect to D-Bus system bus");
         info!("Connected to the system D-Bus");
 
         let proxy_ac = dbus_system.with_proxy(
             "org.freedesktop.UPower",
             "/org/freedesktop/UPower/devices/line_power_AC0",
-            time::Duration::from_millis(5000)
+            time::Duration::from_millis(5000),
         );
 
         let proxy_battery = dbus_system.with_proxy(
             "org.freedesktop.UPower",
             "/org/freedesktop/UPower/devices/battery_BAT0",
-            time::Duration::from_millis(5000)
+            time::Duration::from_millis(5000),
         );
 
         let proxy_login = dbus_system.with_proxy(
             "org.freedesktop.login1",
             "/org/freedesktop/login1",
-            time::Duration::from_millis(5000)
+            time::Duration::from_millis(5000),
         );
 
-        let _id = proxy_ac.match_signal(|h: battery::OrgFreedesktopDBusPropertiesPropertiesChanged, _: &Connection, _: &Message| {
-            let online: Option<&bool> = arg::prop_cast(&h.changed_properties, "Online");
-            if let Some(online) = online {
-                info!("AC0 online: {:?}", online);
-                dev_manager().set_ac_state(*online);
-            }
-            true
-        });
-
-        let _id = proxy_battery.match_signal(|h: battery::OrgFreedesktopDBusPropertiesPropertiesChanged, _: &Connection, _: &Message| {
-            let perc: Option<&f64> = arg::prop_cast(&h.changed_properties, "Percentage");
-            if let Some(perc) = perc {
-                info!("Battery percentage: {:.1}", perc);
-            }
-            true
-        });
-
-        let _id = proxy_login.match_signal(|h: login1::OrgFreedesktopLogin1ManagerPrepareForSleep, _: &Connection, _: &Message| {
-            info!("PrepareForSleep {:?}", h.start);
-            {
-                let mut d = dev_manager();
-                d.set_ac_state_get();
-                if h.start {
-                    d.light_off();
-                } else {
-                    d.restore_light();
+        let _id = proxy_ac.match_signal(
+            |h: battery::OrgFreedesktopDBusPropertiesPropertiesChanged,
+             _: &Connection,
+             _: &Message| {
+                let online: Option<&bool> = arg::prop_cast(&h.changed_properties, "Online");
+                if let Some(online) = online {
+                    info!("AC0 online: {:?}", online);
+                    dev_manager().set_ac_state(*online);
                 }
-            }
-            true
-        });
+                true
+            },
+        );
 
-        loop { dbus_system.process(time::Duration::from_millis(1000)).unwrap(); }
+        let _id = proxy_battery.match_signal(
+            |h: battery::OrgFreedesktopDBusPropertiesPropertiesChanged,
+             _: &Connection,
+             _: &Message| {
+                let perc: Option<&f64> = arg::prop_cast(&h.changed_properties, "Percentage");
+                if let Some(perc) = perc {
+                    info!("Battery percentage: {:.1}", perc);
+                }
+                true
+            },
+        );
+
+        let _id = proxy_login.match_signal(
+            |h: login1::OrgFreedesktopLogin1ManagerPrepareForSleep, _: &Connection, _: &Message| {
+                info!("PrepareForSleep {:?}", h.start);
+                {
+                    let mut d = dev_manager();
+                    d.set_ac_state_get();
+                    if h.start {
+                        d.light_off();
+                    } else {
+                        d.restore_light();
+                    }
+                }
+                true
+            },
+        );
+
+        loop {
+            dbus_system
+                .process(time::Duration::from_millis(1000))
+                .unwrap();
+        }
     })
 }
 
@@ -269,7 +314,7 @@ pub fn start_shutdown_task() -> JoinHandle<()> {
     thread::spawn(|| {
         let mut signals = Signals::new([SIGINT, SIGTERM]).unwrap();
         let _ = signals.forever().next();
-        
+
         // If we reach this point, we have a signal and it is time to exit
         println!("Received signal, cleaning up");
         let json = effect_manager().save();
@@ -306,27 +351,37 @@ pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::Daemon
     let mut d = dev_manager();
     match cmd {
         comms::DaemonCommand::SetPowerMode { ac, pwr, cpu, gpu } => {
-            Some(comms::DaemonResponse::SetPowerMode { result: d.set_power_mode(ac, pwr, cpu, gpu) })
-        },
-        comms::DaemonCommand::SetFanSpeed { ac, rpm } => {
-            Some(comms::DaemonResponse::SetFanSpeed { result: d.set_fan_rpm(ac, rpm) })
-        },
-        comms::DaemonCommand::SetLogoLedState{ ac, logo_state } => {
-            Some(comms::DaemonResponse::SetLogoLedState { result: d.set_logo_led_state(ac, logo_state) })
-        },
+            Some(comms::DaemonResponse::SetPowerMode {
+                result: d.set_power_mode(ac, pwr, cpu, gpu),
+            })
+        }
+        comms::DaemonCommand::SetFanSpeed { ac, rpm } => Some(comms::DaemonResponse::SetFanSpeed {
+            result: d.set_fan_rpm(ac, rpm),
+        }),
+        comms::DaemonCommand::SetLogoLedState { ac, logo_state } => {
+            Some(comms::DaemonResponse::SetLogoLedState {
+                result: d.set_logo_led_state(ac, logo_state),
+            })
+        }
         comms::DaemonCommand::SetBrightness { ac, val } => {
-            Some(comms::DaemonResponse::SetBrightness {result: d.set_brightness(ac, val) })
+            Some(comms::DaemonResponse::SetBrightness {
+                result: d.set_brightness(ac, val),
+            })
         }
-        comms::DaemonCommand::SetIdle { ac, val } => {
-            Some(comms::DaemonResponse::SetIdle { result: d.change_idle(ac, val) })
+        comms::DaemonCommand::SetIdle { ac, val } => Some(comms::DaemonResponse::SetIdle {
+            result: d.change_idle(ac, val),
+        }),
+        comms::DaemonCommand::SetSync { sync } => Some(comms::DaemonResponse::SetSync {
+            result: d.set_sync(sync),
+        }),
+        comms::DaemonCommand::GetBrightness { ac } => Some(comms::DaemonResponse::GetBrightness {
+            result: d.get_brightness(ac),
+        }),
+        comms::DaemonCommand::GetLogoLedState { ac } => {
+            Some(comms::DaemonResponse::GetLogoLedState {
+                logo_state: d.get_logo_led_state(ac),
+            })
         }
-        comms::DaemonCommand::SetSync { sync } => {
-            Some(comms::DaemonResponse::SetSync { result: d.set_sync(sync) })
-        }
-        comms::DaemonCommand::GetBrightness{ac} =>  {
-            Some(comms::DaemonResponse::GetBrightness { result: d.get_brightness(ac)})
-        },
-        comms::DaemonCommand::GetLogoLedState{ac} => Some(comms::DaemonResponse::GetLogoLedState {logo_state: d.get_logo_led_state(ac) }),
         comms::DaemonCommand::GetKeyboardRGB { layer } => {
             let map = effect_manager().get_map(layer);
             Some(comms::DaemonResponse::GetKeyboardRGB {
@@ -334,12 +389,22 @@ pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::Daemon
                 rgbdata: map,
             })
         }
-        comms::DaemonCommand::GetSync() => Some(comms::DaemonResponse::GetSync { sync: d.get_sync() }),
-        comms::DaemonCommand::GetFanSpeed{ac} => Some(comms::DaemonResponse::GetFanSpeed { rpm: d.get_fan_rpm(ac)}),
-        comms::DaemonCommand::GetPwrLevel{ac} => Some(comms::DaemonResponse::GetPwrLevel { pwr: d.get_power_mode(ac) }),
-        comms::DaemonCommand::GetCPUBoost{ac} => Some(comms::DaemonResponse::GetCPUBoost { cpu: d.get_cpu_boost(ac) }),
-        comms::DaemonCommand::GetGPUBoost{ac} => Some(comms::DaemonResponse::GetGPUBoost { gpu: d.get_gpu_boost(ac) }),
-        comms::DaemonCommand::SetEffect{ name, params } => {
+        comms::DaemonCommand::GetSync() => {
+            Some(comms::DaemonResponse::GetSync { sync: d.get_sync() })
+        }
+        comms::DaemonCommand::GetFanSpeed { ac } => Some(comms::DaemonResponse::GetFanSpeed {
+            rpm: d.get_fan_rpm(ac),
+        }),
+        comms::DaemonCommand::GetPwrLevel { ac } => Some(comms::DaemonResponse::GetPwrLevel {
+            pwr: d.get_power_mode(ac),
+        }),
+        comms::DaemonCommand::GetCPUBoost { ac } => Some(comms::DaemonResponse::GetCPUBoost {
+            cpu: d.get_cpu_boost(ac),
+        }),
+        comms::DaemonCommand::GetGPUBoost { ac } => Some(comms::DaemonResponse::GetGPUBoost {
+            gpu: d.get_gpu_boost(ac),
+        }),
+        comms::DaemonCommand::SetEffect { name, params } => {
             let mut res;
             {
                 let mut k = effect_manager();
@@ -349,16 +414,13 @@ pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::Daemon
                     "static_gradient" => Some(kbd::effects::StaticGradient::new(params)),
                     "wave_gradient" => Some(kbd::effects::WaveGradient::new(params)),
                     "breathing_single" => Some(kbd::effects::BreathSingle::new(params)),
-                    _ => None
+                    _ => None,
                 };
 
                 if let Some(laptop) = d.get_device() {
                     if let Some(e) = effect {
                         k.pop_effect(laptop); // Remove old layer
-                        k.push_effect(
-                            e,
-                            [true; 90]
-                            );
+                        k.push_effect(e, [true; 90]);
                     } else {
                         res = false
                     }
@@ -366,10 +428,10 @@ pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::Daemon
                     res = false;
                 }
             }
-            Some(comms::DaemonResponse::SetEffect{result: res})
+            Some(comms::DaemonResponse::SetEffect { result: res })
         }
 
-        comms::DaemonCommand::SetStandardEffect{ name, params } => {
+        comms::DaemonCommand::SetStandardEffect { name, params } => {
             // TODO save standart effect may be struct ?
             let res;
             if let Some(laptop) = d.get_device() {
@@ -380,10 +442,14 @@ pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::Daemon
                         "off" => d.set_standard_effect(device::RazerLaptop::OFF, params),
                         "wave" => d.set_standard_effect(device::RazerLaptop::WAVE, params),
                         "reactive" => d.set_standard_effect(device::RazerLaptop::REACTIVE, params),
-                        "breathing" => d.set_standard_effect(device::RazerLaptop::BREATHING, params),
+                        "breathing" => {
+                            d.set_standard_effect(device::RazerLaptop::BREATHING, params)
+                        }
                         "spectrum" => d.set_standard_effect(device::RazerLaptop::SPECTRUM, params),
                         "static" => d.set_standard_effect(device::RazerLaptop::STATIC, params),
-                        "starlight" => d.set_standard_effect(device::RazerLaptop::STARLIGHT, params), 
+                        "starlight" => {
+                            d.set_standard_effect(device::RazerLaptop::STARLIGHT, params)
+                        }
                         _ => false,
                     };
                     res = _res;
@@ -391,35 +457,56 @@ pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::Daemon
             } else {
                 res = false;
             }
-            Some(comms::DaemonResponse::SetStandardEffect{result: res})
+            Some(comms::DaemonResponse::SetStandardEffect { result: res })
         }
-        comms::DaemonCommand::SetBatteryHealthOptimizer { is_on, threshold } => { 
-            Some(comms::DaemonResponse::SetBatteryHealthOptimizer { result: d.set_bho_handler(is_on, threshold)})
+        comms::DaemonCommand::SetBatteryHealthOptimizer { is_on, threshold } => {
+            Some(comms::DaemonResponse::SetBatteryHealthOptimizer {
+                result: d.set_bho_handler(is_on, threshold),
+            })
         }
         comms::DaemonCommand::GetBatteryHealthOptimizer() => {
-            d.get_bho_handler().map(|result| 
-                comms::DaemonResponse::GetBatteryHealthOptimizer {
-                    is_on: (result.0), 
-                    threshold: (result.1) 
-                }
-            )
+            d.get_bho_handler()
+                .map(|result| comms::DaemonResponse::GetBatteryHealthOptimizer {
+                    is_on: (result.0),
+                    threshold: (result.1),
+                })
         }
         comms::DaemonCommand::GetDeviceName => {
             let name = match &d.device {
                 Some(device) => device.get_name(),
-                None => "Unknown Device".into()
+                None => "Unknown Device".into(),
             };
             Some(comms::DaemonResponse::GetDeviceName { name })
         }
 
         comms::DaemonCommand::SetEnableLightControl { enable } => {
-            Some(comms::DaemonResponse::SetEnableLightControl { result: d.set_light_control(enable) })
+            Some(comms::DaemonResponse::SetEnableLightControl {
+                result: d.set_light_control(enable),
+            })
         }
         comms::DaemonCommand::GetEnableLightControl => {
-            Some(comms::DaemonResponse::GetEnableLightControl { enabled: d.get_light_control()})
+            Some(comms::DaemonResponse::GetEnableLightControl {
+                enabled: d.get_light_control(),
+            })
         }
-
+        comms::DaemonCommand::GetCoolingPadState => {
+            let (present, fan_rpm, effect, effect_params) = d.get_cooling_pad_state();
+            Some(comms::DaemonResponse::GetCoolingPadState {
+                present,
+                fan_rpm,
+                effect,
+                effect_params,
+            })
+        }
+        comms::DaemonCommand::SetCoolingPadFanSpeed { rpm } => {
+            Some(comms::DaemonResponse::SetCoolingPadFanSpeed {
+                result: d.set_cooling_pad_fan_rpm(rpm),
+            })
+        }
+        comms::DaemonCommand::SetCoolingPadEffect { name, params } => {
+            Some(comms::DaemonResponse::SetCoolingPadEffect {
+                result: d.set_cooling_pad_effect(name, params),
+            })
+        }
     }
 }
-
-

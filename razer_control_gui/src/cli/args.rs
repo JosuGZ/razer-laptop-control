@@ -1,7 +1,11 @@
 use clap::{command, Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
-#[command(version="0.5.0", about="razer laptop configuration for linux", name="razer-cli")]
+#[command(
+    version = "0.5.0",
+    about = "razer laptop configuration for linux",
+    name = "razer-cli"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub args: Args,
@@ -30,7 +34,7 @@ pub enum Args {
         effect: Effect,
     },
     /// Displays information about present Razer Devices
-    DeviceInfo
+    DeviceInfo,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]

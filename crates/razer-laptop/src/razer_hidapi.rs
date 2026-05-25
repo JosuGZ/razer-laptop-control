@@ -23,13 +23,13 @@ pub struct RazerPacket {
 }
 
 impl RazerPacket {
-// Command status
-    const RAZER_CMD_NEW:u8 = 0x00;
-    const RAZER_CMD_BUSY:u8 = 0x01;
-    const RAZER_CMD_SUCCESSFUL:u8 = 0x02;
+    // Command status
+    const RAZER_CMD_NEW: u8 = 0x00;
+    const RAZER_CMD_BUSY: u8 = 0x01;
+    const RAZER_CMD_SUCCESSFUL: u8 = 0x02;
     // const RAZER_CMD_FAILURE:u8 = 0x03;
     // const RAZER_CMD_TIMEOUT:u8 =0x04;
-    const RAZER_CMD_NOT_SUPPORTED:u8 = 0x05;
+    const RAZER_CMD_NOT_SUPPORTED: u8 = 0x05;
 
     pub fn new(command_class: u8, command_id: u8, data_size: u8) -> RazerPacket {
         RazerPacket {
@@ -47,7 +47,7 @@ impl RazerPacket {
         }
     }
 
-    fn calc_crc(&mut self) -> Vec<u8>{
+    fn calc_crc(&mut self) -> Vec<u8> {
         let mut res: u8 = 0x00;
         let buf: Vec<u8> = bincode::serialize(self).unwrap();
         debug_assert!(buf.len() == 89);
@@ -69,13 +69,12 @@ pub struct RazerHidapi {
 }
 
 impl RazerHidapi {
-
     pub fn new(device: hidapi::HidDevice) -> Self {
         RazerHidapi {
             device,
             reports_sent: 0,
             errors: 0,
-            busy_events: 0
+            busy_events: 0,
         }
     }
 
@@ -87,10 +86,10 @@ impl RazerHidapi {
         for _ in 0..3 {
             match self._send_report_inner(&mut report) {
                 Ok(packet) => return Some(packet),
-                Err(error) => last_error = Some(error)
+                Err(error) => last_error = Some(error),
             }
         }
-    
+
         if let Some(error) = last_error {
             self.errors += 1;
             error!("Failed to send report: {error}");
@@ -103,21 +102,24 @@ impl RazerHidapi {
         None
     }
 
-    fn _send_report_inner(&mut self, report: &mut RazerPacket) -> anyhow::Result<RazerPacket>{
+    fn _send_report_inner(&mut self, report: &mut RazerPacket) -> anyhow::Result<RazerPacket> {
         let mut temp_buf: [u8; 91] = [0x00; 91];
 
-        self.device.send_feature_report(report.calc_crc().as_slice())
+        self.device
+            .send_feature_report(report.calc_crc().as_slice())
             .context("failed to send feature report")?;
-                
+
         thread::sleep(Duration::from_micros(1000));
 
-        let size = self.device.get_feature_report(&mut temp_buf)
+        let size = self
+            .device
+            .get_feature_report(&mut temp_buf)
             .context("failed to get feature report")?;
 
         if size != 91 {
             anyhow::bail!("invalid report length. Expected: 91, got: {size}");
         }
-        
+
         let response = bincode::deserialize::<RazerPacket>(&temp_buf)
             .context("failed to deserialize packet")?;
 
@@ -126,10 +128,9 @@ impl RazerHidapi {
             return Ok(response);
         }
 
-        let response_matches_report = 
-            response.remaining_packets == report.remaining_packets &&
-            response.command_class == report.command_class &&
-            response.command_id == report.command_id;
+        let response_matches_report = response.remaining_packets == report.remaining_packets
+            && response.command_class == report.command_class
+            && response.command_id == report.command_id;
 
         if !response_matches_report {
             anyhow::bail!("response doesn't match request");
@@ -139,13 +140,13 @@ impl RazerHidapi {
             RazerPacket::RAZER_CMD_BUSY => {
                 self.busy_events += 1;
                 anyhow::bail!("busy")
-            },
+            }
 
             RazerPacket::RAZER_CMD_SUCCESSFUL => Ok(response),
 
             RazerPacket::RAZER_CMD_NOT_SUPPORTED => {
                 anyhow::bail!("command not supported");
-            },
+            }
 
             status => anyhow::bail!("unknown response status: {status}"),
         }
@@ -160,10 +161,7 @@ impl RazerHidapi {
 
         info!(
             "Stats: {{sent: {}, busy: {}, errors: {}, busy_percent: {:.2}%}}",
-            self.reports_sent,
-            self.busy_events,
-            self.errors,
-            busy_events_percent,
+            self.reports_sent, self.busy_events, self.errors, busy_events_percent,
         );
     }
 }

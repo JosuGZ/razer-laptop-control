@@ -19,6 +19,7 @@ incomplete or vary between devices.
 - Logo control
 - Basic GUI
 - CLI
+- Razer Laptop Cooling Pad hot-plug controls (fan and basic RGB)
 
 ## Supported Models
 
