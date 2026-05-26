@@ -611,7 +611,7 @@ fn make_page(ac: bool, device: SupportedDevice) -> SettingsPage {
     scale.set_width_request(100);
     scale.connect_change_value(move |scale, _, value| {
         let value = value.clamp(0f64, 100f64);
-        set_brightness(ac, value as u8).or_crash("Error setting brigthness");
+        set_brightness(ac, value as u8).or_crash("Error setting brightness");
         let brightness = get_brightness(ac).or_crash("Error reading brightness");
         scale.set_value(brightness as f64);
         gtk::glib::Propagation::Stop
@@ -722,7 +722,7 @@ fn make_general_page() -> SettingsPage {
         switch.set_state(bho.0);
         let row = SettingsRow::new(&label, &switch);
         settings_section.add_row(&row.master_container);
-        let label = Label::new(Some("Theshold"));
+        let label = Label::new(Some("Threshold"));
         let scale = Scale::with_range(gtk::Orientation::Horizontal, 65f64, 80f64, 1f64);
         scale.set_value(bho.1 as f64);
         scale.set_width_request(100);

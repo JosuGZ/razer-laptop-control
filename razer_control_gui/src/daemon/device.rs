@@ -582,25 +582,21 @@ impl DeviceManager {
     }
 
     pub fn set_cooling_pad_effect(&mut self, effect: String, params: Vec<u8>) -> bool {
-        let res = self.cooling_pad.as_mut().is_some_and(|cooling_pad| {
+        if let Some(config) = self.get_config() {
+            config.cooling_pad.effect = effect.clone();
+            config.cooling_pad.effect_params = params.clone();
+            if let Err(error) = config.write_to_file() {
+                eprintln!("Error write config {:?}", error);
+            }
+        }
+
+        self.cooling_pad.as_mut().is_some_and(|cooling_pad| {
             if effect == "static" {
                 cooling_pad.set_color(&params) && cooling_pad.set_effect("static", &params)
             } else {
                 cooling_pad.set_effect(&effect, &params)
             }
-        });
-
-        if res {
-            if let Some(config) = self.get_config() {
-                config.cooling_pad.effect = effect;
-                config.cooling_pad.effect_params = params;
-                if let Err(error) = config.write_to_file() {
-                    eprintln!("Error write config {:?}", error);
-                }
-            }
-        }
-
-        res
+        })
     }
 
     fn get_config(&mut self) -> Option<&mut config::Configuration> {
@@ -721,12 +717,12 @@ impl CoolingPad {
         args: &[u8],
     ) -> anyhow::Result<Vec<u8>> {
         let mut packet = [0u8; Self::PACKET_LEN];
+        let copy_len = args.len().min(80);
         packet[0] = Self::STATUS_NEW;
         packet[1] = Self::TRANSACTION_ID;
-        packet[5] = args.len() as u8;
+        packet[5] = copy_len as u8;
         packet[6] = command_class;
         packet[7] = command_id;
-        let copy_len = args.len().min(80);
         packet[8..8 + copy_len].copy_from_slice(&args[..copy_len]);
         packet[88] = Self::calc_crc(&packet);
 
@@ -815,12 +811,23 @@ impl CoolingPad {
             )
             .ok()?;
 
-        let data_size = usize::from(response[6]);
-        if data_size < 3 {
+        const PACKET_HEADER_LEN: usize = 8;
+        const FAN_PERCENT_PAYLOAD_OFFSET: usize = 2;
+        if response.len() <= 5 {
             return None;
         }
 
-        Some(Self::percent_to_rpm(response[11]))
+        let data_size = usize::from(response[5]);
+        if data_size < FAN_PERCENT_PAYLOAD_OFFSET + 1 {
+            return None;
+        }
+
+        let percent_index = PACKET_HEADER_LEN + FAN_PERCENT_PAYLOAD_OFFSET;
+        if response.len() <= percent_index {
+            return None;
+        }
+
+        Some(Self::percent_to_rpm(response[percent_index]))
     }
 
     fn send_fan_auto(&mut self) -> bool {
