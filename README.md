@@ -63,7 +63,7 @@ incomplete or vary between devices.
 | Razer Blade 18 2023           | 1532 | 02a0 | logo, boost, bho          |
 | Razer Blade 16 2024           | 1532 | 02b7 | logo, boost, bho          |
 | Razer Blade 18 2024           | 1532 | 02b8 | logo, boost, bho          |
-| Razer Laptop Cooling Pad      | 1532 | 0F43 | fan, rgb                  |
+| Razer Laptop Cooling Pad      | 1532 | 0F43 |                           |
 
 ### Adding a new model
 
