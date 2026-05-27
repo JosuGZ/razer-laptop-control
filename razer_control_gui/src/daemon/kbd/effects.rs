@@ -73,7 +73,9 @@ impl Effect for StaticGradient {
         Self: Sized,
     {
         let mut kbd = board::KeyboardData::new();
-        let args: [u8; 6] = [args[0], args[1], args[2], args[3], args[4], args[5]];
+        let args: [u8; 6] = [
+            args[0], args[1], args[2], args[3], args[4], args[5]
+        ];
         let mut c1 = board::AnimatorKeyColour::new_u(args[0], args[1], args[2]);
         let c2 = board::AnimatorKeyColour::new_u(args[3], args[4], args[5]);
         let delta = (c2 - c1).divide(14.0);
@@ -132,7 +134,9 @@ impl Effect for WaveGradient {
     where
         Self: Sized,
     {
-        let args: [u8; 6] = [args[0], args[1], args[2], args[3], args[4], args[5]];
+        let args: [u8; 6] = [
+            args[0], args[1], args[2], args[3], args[4], args[5],
+        ];
         let mut wave = WaveGradient {
             kbd: board::KeyboardData::new(),
             args,

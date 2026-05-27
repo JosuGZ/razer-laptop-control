@@ -146,7 +146,7 @@ impl EffectManager {
         self.layers.pop();
         // If no more layers, erase keyboard rendering and set it to black
         if self.layers.is_empty() {
-            self.render_board.set_kbd_colour(0, 0, 0);
+            self.render_board.set_kbd_colour(0, 0, 0); 
             self.render_board.update_kbd(laptop);
             self.render_board.update_custom_mode(laptop);
         }

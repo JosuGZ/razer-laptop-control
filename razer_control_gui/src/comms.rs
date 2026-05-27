@@ -8,164 +8,60 @@ pub const SOCKET_PATH: &str = "/tmp/razercontrol-socket";
 #[derive(Serialize, Deserialize, Debug)]
 /// Represents data sent TO the daemon
 pub enum DaemonCommand {
-    SetFanSpeed {
-        ac: usize,
-        rpm: i32,
-    }, // Fan speed
-    GetFanSpeed {
-        ac: usize,
-    }, // Get (Fan speed)
-    SetPowerMode {
-        ac: usize,
-        pwr: u8,
-        cpu: u8,
-        gpu: u8,
-    }, // Power mode
-    GetPwrLevel {
-        ac: usize,
-    }, // Get (Power mode)
-    GetCPUBoost {
-        ac: usize,
-    }, // Get (CPU boost)
-    GetGPUBoost {
-        ac: usize,
-    }, // Get (GPU boost)
-    SetLogoLedState {
-        ac: usize,
-        logo_state: u8,
-    },
-    GetLogoLedState {
-        ac: usize,
-    },
-    GetKeyboardRGB {
-        layer: i32,
-    }, // Layer ID
-    SetEffect {
-        name: String,
-        params: Vec<u8>,
-    }, // Set keyboard colour
-    SetStandardEffect {
-        name: String,
-        params: Vec<u8>,
-    }, // Set keyboard colour
-    SetBrightness {
-        ac: usize,
-        val: u8,
-    },
-    SetIdle {
-        ac: usize,
-        val: u32,
-    },
-    GetBrightness {
-        ac: usize,
-    },
-    SetSync {
-        sync: bool,
-    },
-    GetSync(),
-    SetBatteryHealthOptimizer {
-        is_on: bool,
-        threshold: u8,
-    },
-    GetBatteryHealthOptimizer(),
-    SetEnableLightControl {
-        enable: bool,
-    },
+    SetFanSpeed { ac: usize, rpm: i32 },      // Fan speed
+    GetFanSpeed { ac: usize },                 // Get (Fan speed)
+    SetPowerMode { ac: usize, pwr: u8, cpu: u8, gpu: u8}, // Power mode
+    GetPwrLevel { ac: usize },                 // Get (Power mode)
+    GetCPUBoost { ac: usize },                 // Get (CPU boost)
+    GetGPUBoost { ac: usize },                 // Get (GPU boost)
+    SetLogoLedState{ ac:usize, logo_state: u8 },
+    GetLogoLedState { ac: usize },
+    GetKeyboardRGB { layer: i32 }, // Layer ID
+    SetEffect { name: String, params: Vec<u8> }, // Set keyboard colour
+    SetStandardEffect { name: String, params: Vec<u8> }, // Set keyboard colour
+    SetBrightness { ac:usize, val: u8 },
+    SetIdle {ac: usize, val: u32 },
+    GetBrightness { ac: usize },
+    SetSync { sync: bool },
+    GetSync (),
+    SetBatteryHealthOptimizer { is_on: bool, threshold: u8 },
+    GetBatteryHealthOptimizer (),
+    SetEnableLightControl { enable: bool },
     GetEnableLightControl,
     GetDeviceName,
-    // Append-only: bincode encodes enum variants by position.
     GetCoolingPadState,
-    SetCoolingPadFanSpeed {
-        rpm: i32,
-    },
-    SetCoolingPadEffect {
-        name: String,
-        params: Vec<u8>,
-    },
+    SetCoolingPadFanSpeed { rpm: i32 },
+    SetCoolingPadEffect { name: String, params: Vec<u8> },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 /// Represents data sent back from Daemon after it receives
 /// a command.
 pub enum DaemonResponse {
-    SetFanSpeed {
-        result: bool,
-    }, // Response
-    GetFanSpeed {
-        rpm: i32,
-    }, // Get (Fan speed)
-    SetPowerMode {
-        result: bool,
-    }, // Response
-    GetPwrLevel {
-        pwr: u8,
-    }, // Get (Power mode)
-    GetCPUBoost {
-        cpu: u8,
-    }, // Get (CPU boost)
-    GetGPUBoost {
-        gpu: u8,
-    }, // Get (GPU boost)
-    SetLogoLedState {
-        result: bool,
-    },
-    GetLogoLedState {
-        logo_state: u8,
-    },
-    GetKeyboardRGB {
-        layer: i32,
-        rgbdata: Vec<u8>,
-    }, // Response (RGB) of 90 keys
-    SetEffect {
-        result: bool,
-    }, // Set keyboard colour
-    SetStandardEffect {
-        result: bool,
-    }, // Set keyboard colour
-    SetBrightness {
-        result: bool,
-    },
-    SetIdle {
-        result: bool,
-    },
-    GetBrightness {
-        result: u8,
-    },
-    SetSync {
-        result: bool,
-    },
-    GetSync {
-        sync: bool,
-    },
-    SetBatteryHealthOptimizer {
-        result: bool,
-    },
-    GetBatteryHealthOptimizer {
-        is_on: bool,
-        threshold: u8,
-    },
-    SetEnableLightControl {
-        result: bool,
-    },
-    GetEnableLightControl {
-        enabled: bool,
-    },
-    GetDeviceName {
-        name: String,
-    },
-    // Append-only: bincode encodes enum variants by position.
-    GetCoolingPadState {
-        present: bool,
-        fan_rpm: i32,
-        effect: String,
-        effect_params: Vec<u8>,
-    },
-    SetCoolingPadFanSpeed {
-        result: bool,
-    },
-    SetCoolingPadEffect {
-        result: bool,
-    },
+    SetFanSpeed { result: bool },                    // Response
+    GetFanSpeed { rpm: i32 },                        // Get (Fan speed)
+    SetPowerMode { result: bool },                   // Response
+    GetPwrLevel { pwr: u8 },                         // Get (Power mode)
+    GetCPUBoost { cpu: u8 },                         // Get (CPU boost)
+    GetGPUBoost { gpu: u8 },                         // Get (GPU boost)
+    SetLogoLedState {result: bool },
+    GetLogoLedState { logo_state: u8 },
+    GetKeyboardRGB { layer: i32, rgbdata: Vec<u8> }, // Response (RGB) of 90 keys
+    SetEffect { result: bool },                       // Set keyboard colour
+    SetStandardEffect { result: bool },                       // Set keyboard colour
+    SetBrightness { result: bool },
+    SetIdle { result: bool },
+    GetBrightness { result: u8 },
+    SetSync { result: bool },
+    GetSync { sync: bool },
+    SetBatteryHealthOptimizer { result: bool },
+    GetBatteryHealthOptimizer { is_on: bool, threshold: u8 },
+    SetEnableLightControl { result: bool },
+    GetEnableLightControl { enabled: bool },
+    GetDeviceName { name: String },
+    GetCoolingPadState { present: bool, fan_rpm: i32, effect: String, effect_params: Vec<u8> },
+    SetCoolingPadFanSpeed { result: bool },
+    SetCoolingPadEffect { result: bool },
 }
 
 #[allow(dead_code)]

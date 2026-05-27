@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::{fs, fs::File, io, env};
 use std::io::prelude::*;
-use std::{env, fs, fs::File, io};
 
 const SETTINGS_FILE: &str = "/.local/share/razercontrol/daemon.json";
 const EFFECTS_FILE: &str = "/.local/share/razercontrol/effects.json";
@@ -56,9 +56,7 @@ impl Default for CoolingPadConfig {
     }
 }
 
-fn default_light_control() -> bool {
-    true
-}
+fn default_light_control() -> bool { true }
 
 #[derive(Serialize, Deserialize)]
 pub struct Configuration {
@@ -67,7 +65,7 @@ pub struct Configuration {
     pub enable_light_control: bool,
     pub power: [PowerConfig; 2],
     /// Sync light settings between ac and battery
-    pub sync: bool,
+    pub sync: bool, 
     // No light bellow this percentage of battery
     pub no_light: f64,
     pub standard_effect: u8,

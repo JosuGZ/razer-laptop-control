@@ -200,16 +200,16 @@ impl KeyboardData {
 
     // #[allow(dead_code)]
     // pub fn set_brightness(&mut self, val: u8, laptop: device::RazerLaptop) -> bool {
-    // // driver_sysfs::write_brightness(val)
-    // // laptop.set_brightness(val);
-    // return true;
+        // // driver_sysfs::write_brightness(val)
+        // // laptop.set_brightness(val);
+        // return true;
     // }
 
     // #[allow(dead_code)]
     // pub fn get_brightness(&mut self, laptop: device::RazerLaptop) -> u8 {
-    // // self.brightness = driver_sysfs::read_brightness();
-    // // self.brightness = laptop.get_brightness();
-    // self.brightness
+        // // self.brightness = driver_sysfs::read_brightness();
+        // // self.brightness = laptop.get_brightness();
+        // self.brightness
     // }
 
     pub fn update_kbd(&mut self, laptop: &mut device::RazerLaptop) -> bool {
