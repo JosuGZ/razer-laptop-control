@@ -1012,6 +1012,7 @@ dependencies = [
  "env_logger",
  "glib 0.19.7",
  "gtk",
+ "hidapi",
  "log",
  "rand",
  "razer-laptop",

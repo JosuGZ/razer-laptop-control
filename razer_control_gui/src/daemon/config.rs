@@ -32,6 +32,30 @@ impl PowerConfig {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct CoolingPadConfig {
+    pub fan_rpm: i32,
+    pub effect: String,
+    pub effect_params: Vec<u8>,
+}
+
+impl CoolingPadConfig {
+    pub fn new() -> CoolingPadConfig {
+        CoolingPadConfig {
+            fan_rpm: 0,
+            effect: "off".into(),
+            effect_params: vec![],
+        }
+    }
+}
+
+impl Default for CoolingPadConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn default_light_control() -> bool { true }
 
 #[derive(Serialize, Deserialize)]
@@ -46,6 +70,8 @@ pub struct Configuration {
     pub no_light: f64,
     pub standard_effect: u8,
     pub standard_effect_params: Vec<u8>,
+    #[serde(default)]
+    pub cooling_pad: CoolingPadConfig,
 }
 
 impl Configuration {
@@ -56,7 +82,8 @@ impl Configuration {
             sync: false,
             no_light: 0.0,
             standard_effect: 0, // off
-            standard_effect_params: vec![]
+            standard_effect_params: vec![],
+            cooling_pad: CoolingPadConfig::new(),
         }
     }
 

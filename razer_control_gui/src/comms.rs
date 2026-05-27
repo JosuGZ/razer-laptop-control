@@ -28,7 +28,10 @@ pub enum DaemonCommand {
     GetBatteryHealthOptimizer (),
     SetEnableLightControl { enable: bool },
     GetEnableLightControl,
-    GetDeviceName 
+    GetDeviceName,
+    GetCoolingPadState,
+    SetCoolingPadFanSpeed { rpm: i32 },
+    SetCoolingPadEffect { name: String, params: Vec<u8> },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -55,7 +58,10 @@ pub enum DaemonResponse {
     GetBatteryHealthOptimizer { is_on: bool, threshold: u8 },
     SetEnableLightControl { result: bool },
     GetEnableLightControl { enabled: bool },
-    GetDeviceName { name: String }
+    GetDeviceName { name: String },
+    GetCoolingPadState { present: bool, fan_rpm: i32, effect: String, effect_params: Vec<u8> },
+    SetCoolingPadFanSpeed { result: bool },
+    SetCoolingPadEffect { result: bool },
 }
 
 #[allow(dead_code)]

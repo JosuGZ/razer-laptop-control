@@ -39,6 +39,9 @@ new_ret_no_self = "allow" #1
 
 [dependencies]
 razer-laptop = { path = "../crates/razer-laptop" }
+hidapi = { version = "2.6.5", default-features = false, features = [
+    "linux-static-hidraw",
+] }
 log = { workspace = true }
 env_logger = { workspace = true }
 anyhow = { workspace = true }

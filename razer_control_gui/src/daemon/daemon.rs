@@ -72,6 +72,7 @@ fn main() {
         if let Ok(online) = proxy_ac.online() {
             info!("AC0 online: {:?}", online);
             d.set_ac_state(online);
+            d.refresh_cooling_pad();
             d.restore_standard_effect();
             if let Ok(json) = config::Configuration::read_effects_file() {
                 effect_manager().load_from_save(json);
@@ -90,6 +91,7 @@ fn main() {
     }
 
     start_keyboard_animator_task();
+    start_cooling_pad_monitor_task();
     start_screensaver_monitor_task();
     start_battery_monitor_task();
     let clean_thread = start_shutdown_task();
@@ -144,6 +146,13 @@ pub fn start_keyboard_animator_task() -> JoinHandle<()> {
 
             thread::sleep(std::time::Duration::from_millis(kbd::ANIMATION_SLEEP_MS));
         }
+    })
+}
+
+pub fn start_cooling_pad_monitor_task() -> JoinHandle<()> {
+    thread::spawn(|| loop {
+        dev_manager().refresh_cooling_pad();
+        thread::sleep(std::time::Duration::from_secs(2));
     })
 }
 
@@ -418,8 +427,25 @@ pub fn process_client_request(cmd: comms::DaemonCommand) -> Option<comms::Daemon
         comms::DaemonCommand::GetEnableLightControl => {
             Some(comms::DaemonResponse::GetEnableLightControl { enabled: d.get_light_control()})
         }
+        comms::DaemonCommand::GetCoolingPadState => {
+            let (present, fan_rpm, effect, effect_params) = d.get_cooling_pad_state();
+            Some(comms::DaemonResponse::GetCoolingPadState {
+                present,
+                fan_rpm,
+                effect,
+                effect_params,
+            })
+        }
 
+        comms::DaemonCommand::SetCoolingPadFanSpeed { rpm } => {
+            Some(comms::DaemonResponse::SetCoolingPadFanSpeed {
+                result: d.set_cooling_pad_fan_rpm(rpm),
+            })
+        }
+        comms::DaemonCommand::SetCoolingPadEffect { name, params } => {
+            Some(comms::DaemonResponse::SetCoolingPadEffect {
+                result: d.set_cooling_pad_effect(name, params),
+            })
+        }
     }
 }
-
-
